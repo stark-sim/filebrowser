@@ -19,3 +19,4 @@ var versionCmd = &cobra.Command{
 		fmt.Println("File Browser v" + version.Version + "/" + version.CommitSHA)
 	},
 }
+
