@@ -3,6 +3,7 @@ package bd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -14,13 +15,21 @@ type LoginCode struct {
 }
 
 var (
-	configuration *openapi.Configuration
-	apiClient     *openapi.APIClient
+	configuration  *openapi.Configuration
+	apiClient      *openapi.APIClient
+	DownloadingMap map[string]*Temple
 )
+
+type Temple struct {
+	Size       int     `json:"size"`
+	Current    int     `json:"current"`
+	Percentage float64 `json:"percentage"`
+}
 
 func init() {
 	configuration = openapi.NewConfiguration()
 	apiClient = openapi.NewAPIClient(configuration)
+	DownloadingMap = make(map[string]*Temple)
 }
 func (code LoginCode) VerifyCode() (string, error) {
 	ctx := context.Background()
@@ -134,4 +143,17 @@ func (req DownloadInfoReq) Download() error {
 		}
 	}
 	return nil
+}
+
+type DownloadProgressReq struct {
+	FileName string `json:"file_name"`
+}
+
+func (req DownloadProgressReq) GetDownloadProgress() (*Temple, error) {
+	temple := DownloadingMap[req.FileName]
+	if temple == nil {
+		return nil, errors.New("该文件下载结束或未下载")
+	}
+	temple.Percentage = float64(temple.Current) / float64(temple.Size)
+	return temple, nil
 }

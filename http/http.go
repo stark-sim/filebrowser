@@ -92,5 +92,6 @@ func NewHandler(
 	bd.PathPrefix("/login").Handler(monkey(bdLogin, "/api/bd/login/")).Methods("POST")
 	bd.PathPrefix("/dir").Handler(monkey(bdShowDirInfo, "/api/bd/dir/")).Methods("POST")
 	bd.PathPrefix("/download").Handler(monkey(bdDownLoad, "/api/bd/download/")).Methods("POST")
+	bd.PathPrefix("/progress").Handler(monkey(bdDownloadProgress, "/api/bd/progress/")).Methods("POST")
 	return stripPrefix(server.BaseURL, r), nil
 }

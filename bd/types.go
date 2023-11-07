@@ -13,7 +13,7 @@ func NewFileMetasArg(fsid []uint64, path string) *FileMetasArg {
 }
 
 type ListInfo struct {
-	Size        uint64            `json:"size"`
+	Size        uint64            `json:"Size"`
 	Path        string            `json:"path"`
 	Isdir       int               `json:"isdir"`
 	ServerCtime uint64            `json:"server_ctime"`

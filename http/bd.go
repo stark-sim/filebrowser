@@ -60,3 +60,20 @@ var bdDownLoad = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	}
 	return renderJSON(w, r, d)
 }
+
+var bdDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var downloadProgress bd.DownloadProgressReq
+	err := json.Unmarshal(all, &downloadProgress)
+	if err != nil {
+		logrus.Error(err)
+		return renderJSON(w, r, err)
+	}
+	logrus.Info(string(all))
+	percentage, err := downloadProgress.GetDownloadProgress()
+	if err != nil {
+		return 0, err
+	}
+	return renderJSON(w, r, percentage)
+}

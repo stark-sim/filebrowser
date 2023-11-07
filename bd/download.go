@@ -26,8 +26,11 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 	queueChannel = make(chan struct{}, runtime.NumCPU())
 	switch {
 	case size > 100*MB:
-
 		sum := size / (100 * MB)
+		DownloadingMap[path+outputFilename] = &Temple{
+			Size:    int(sum),
+			Current: 0,
+		}
 		var wg sync.WaitGroup
 		logrus.Info("下载文件: ", outputFilename, " 共临时文件", sum)
 		for i := 0; uint64(i) <= sum; i++ {
@@ -110,6 +113,7 @@ func doRequest(uri string, index uint64, restart int, filename string, isEnd boo
 
 	if err == nil && fileInfo.Size() == int64(100*MB) {
 		logrus.Info("切片文件:", filename+strconv.FormatUint(index, 10), "已存在且完整，跳过下载此切片文件")
+		DownloadingMap[filename].Current++
 		wg.Done()
 		return
 	}
@@ -179,5 +183,6 @@ func doRequest(uri string, index uint64, restart int, filename string, isEnd boo
 		return
 	}
 	<-queueChannel
+	DownloadingMap[filename].Current++
 	wg.Done()
 }
