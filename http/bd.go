@@ -14,14 +14,18 @@ var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	var userInfoReq bd.GetUserInfo
 	err := json.Unmarshal(all, &userInfoReq)
 	if err != nil {
+		logrus.Error(err)
 		return http.StatusInternalServerError, nil
 	}
 	resp, err := userInfoReq.GetUserInfo()
 	if err != nil {
+		logrus.Error(err)
 		return http.StatusInternalServerError, nil
 	}
+	logrus.Info(resp)
 	marshal, err := json.Marshal(resp)
 	if err != nil {
+		logrus.Error(err)
 		return http.StatusInternalServerError, nil
 	}
 	if _, err := w.Write(marshal); err != nil {

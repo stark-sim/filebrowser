@@ -58,9 +58,11 @@ type GetUserInfoResp struct {
 }
 
 func (req GetUserInfo) GetUserInfo() (GetUserInfoResp, error) {
-	infoResponse, _, err := apiClient.UserinfoApi.Xpannasuinfo(context.Background()).AccessToken(req.AccessToken).Execute()
-	if err != nil {
-		return GetUserInfoResp{}, err
+	infoResponse, _, _ := apiClient.UserinfoApi.Xpannasuinfo(context.Background()).AccessToken(req.AccessToken).Execute()
+	var index openapi.Uinforesponse
+	if infoResponse == index || *infoResponse.Errmsg != "succ" {
+		logrus.Error()
+		return GetUserInfoResp{}, errors.New("fail")
 	}
 
 	execute, _, err := apiClient.UserinfoApi.Apiquota(context.Background()).AccessToken(req.AccessToken).Execute()
@@ -75,6 +77,7 @@ func (req GetUserInfo) GetUserInfo() (GetUserInfoResp, error) {
 		Expire:    execute.Expire,
 		Free:      execute.Free,
 	}
+	logrus.Info(resp)
 	return resp, nil
 }
 
