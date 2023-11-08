@@ -90,6 +90,7 @@ func NewHandler(
 	public.PathPrefix("/share").Handler(monkey(publicShareHandler, "/api/public/share/")).Methods("GET")
 	bd := api.PathPrefix("/bd").Subrouter()
 	bd.PathPrefix("/login").Handler(monkey(bdLogin, "/api/bd/login/")).Methods("POST")
+	bd.PathPrefix("/user-info").Handler(monkey(bdUserInfo, "/api/bd/user-info/")).Methods("POST")
 	bd.PathPrefix("/dir").Handler(monkey(bdShowDirInfo, "/api/bd/dir/")).Methods("POST")
 	bd.PathPrefix("/download").Handler(monkey(bdDownLoad, "/api/bd/download/")).Methods("POST")
 	bd.PathPrefix("/progress").Handler(monkey(bdDownloadProgress, "/api/bd/progress/")).Methods("POST")

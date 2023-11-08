@@ -8,17 +8,41 @@ import (
 	"net/http"
 )
 
+var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var userInfoReq bd.GetUserInfo
+	err := json.Unmarshal(all, &userInfoReq)
+	if err != nil {
+		return http.StatusInternalServerError, nil
+	}
+	resp, err := userInfoReq.GetUserInfo()
+	if err != nil {
+		return http.StatusInternalServerError, nil
+	}
+	marshal, err := json.Marshal(resp)
+	if err != nil {
+		return http.StatusInternalServerError, nil
+	}
+	if _, err := w.Write(marshal); err != nil {
+		return http.StatusInternalServerError, nil
+	}
+	return 0, nil
+}
 var bdLogin = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 	all, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	var loginInfo bd.LoginCode
 	err := json.Unmarshal(all, &loginInfo)
 	if err != nil {
-		return renderJSON(w, r, err)
+		return http.StatusInternalServerError, nil
 	}
 	accessToken, err := loginInfo.VerifyCode()
 	if err != nil {
-		return renderJSON(w, r, err)
+		return http.StatusInternalServerError, nil
+	}
+	if accessToken == "" {
+		return http.StatusUnauthorized, nil
 	}
 	return renderJSON(w, r, map[string]string{
 		"access_token": accessToken,

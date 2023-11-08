@@ -44,6 +44,40 @@ func (code LoginCode) VerifyCode() (string, error) {
 
 }
 
+type GetUserInfo struct {
+	AccessToken string `json:"access_token"`
+}
+
+type GetUserInfoResp struct {
+	HasUsed   *int64  `json:"has_used"`
+	TotalCap  *int64  `json:"total_cap"`
+	IsVip     *int32  `json:"is_vip"`
+	BaiduName *string `json:"baidu_name"`
+	Expire    *bool   `json:"expire"`
+	Free      *int64  `json:"free"`
+}
+
+func (req GetUserInfo) GetUserInfo() (GetUserInfoResp, error) {
+	infoResponse, _, err := apiClient.UserinfoApi.Xpannasuinfo(context.Background()).AccessToken(req.AccessToken).Execute()
+	if err != nil {
+		return GetUserInfoResp{}, err
+	}
+
+	execute, _, err := apiClient.UserinfoApi.Apiquota(context.Background()).AccessToken(req.AccessToken).Execute()
+	if err != nil {
+		return GetUserInfoResp{}, err
+	}
+	resp := GetUserInfoResp{
+		HasUsed:   execute.Used,
+		TotalCap:  execute.Total,
+		IsVip:     infoResponse.VipType,
+		BaiduName: infoResponse.BaiduName,
+		Expire:    execute.Expire,
+		Free:      execute.Free,
+	}
+	return resp, nil
+}
+
 type ShowDirInfoReq struct {
 	Path        string `json:"path"`
 	AccessToken string `json:"access_token"`
