@@ -38,7 +38,8 @@
     "update": "Update",
     "upload": "Upload",
     "openFile": "Open file",
-    "continue": "Continue"
+    "continue": "Continue",
+    "add": "Add"
   },
   "download": {
     "downloadFile": "Download File",
@@ -268,7 +269,8 @@
     "preview": "Preview",
     "settings": "Settings",
     "signup": "Signup",
-    "siteSettings": "Site Settings"
+    "siteSettings": "Site Settings",
+    "baiduNetdisk": "Baidu Netdisk"
   },
   "success": {
     "linkCopied": "Link copied!"
@@ -279,5 +281,16 @@
     "minutes": "Minutes",
     "seconds": "Seconds",
     "unit": "Time Unit"
+  },
+  "baiduNetdisk": {
+    "addAuth": "Add Baidu Netdisk authorization",
+    "inputCode": "Code",
+    "getCode": "Get Code",
+    "documentation": "documentation",
+    "ordinaryUser": "Ordinary User",
+    "ordinaryMember": "Ordinary Member",
+    "superMember": "Super Member",
+    "unbind": "unbind",
+    "bindFail": "Binding failed"
   }
 }

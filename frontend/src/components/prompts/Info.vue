@@ -29,7 +29,7 @@
         </p>
       </template>
 
-      <template v-if="!dir">
+      <template v-if="!dir && handlingType !== 'BaiduNetdisk'">
         <p>
           <strong>MD5: </strong
           ><code
@@ -88,10 +88,20 @@ import { files as api } from "@/api";
 export default {
   name: "info",
   computed: {
-    ...mapState(["req", "selected"]),
+    ...mapState(["selected", "handlingType"]),
+    ...mapState({
+      fileReq: (state) => state.req,
+      bdReq: (state) => state.bd.req,
+    }),
     ...mapGetters(["selectedCount", "isListing"]),
+    req() {
+      return this.handlingType === "BaiduNetdisk" ? this.bdReq : this.fileReq;
+    },
     humanSize: function () {
-      if (this.selectedCount === 0 || !this.isListing) {
+      if (
+        this.selectedCount === 0 ||
+        (!this.isListing && this.handlingType !== "BaiduNetdisk")
+      ) {
         return filesize(this.req.size);
       }
 
@@ -104,8 +114,9 @@ export default {
       return filesize(sum);
     },
     humanTime: function () {
+      let modified = this.req.modified;
       if (this.selectedCount === 0) {
-        return moment(this.req.modified).fromNow();
+        return modified ? moment(modified).fromNow() : "";
       }
 
       return moment(this.req.items[this.selected[0]].modified).fromNow();
@@ -142,7 +153,7 @@ export default {
       try {
         const hash = await api.checksum(link, algo);
         // eslint-disable-next-line
-        event.target.innerHTML = hash
+        event.target.innerHTML = hash;
       } catch (e) {
         this.$showError(e);
       }

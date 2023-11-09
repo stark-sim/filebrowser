@@ -36,7 +36,9 @@
     "toggleSidebar": "切换侧边栏",
     "update": "更新",
     "upload": "上传",
-    "openFile": "打开文件"
+    "openFile": "打开文件",
+    "continue": "继续",
+    "add": "添加"
   },
   "download": {
     "downloadFile": "下载文件",
@@ -102,7 +104,7 @@
     "ru": "Русский",
     "sk": "Slovenčina",
     "svSE": "Swedish（Sweden）",
-    "tr" : "Türkçe",
+    "tr": "Türkçe",
     "ua": "Українська",
     "zhCN": "中文（简体）",
     "zhTW": "中文（繁體）"
@@ -255,7 +257,8 @@
     "preview": "预览",
     "settings": "设置",
     "signup": "注册",
-    "siteSettings": "网站设置"
+    "siteSettings": "网站设置",
+    "baiduNetdisk": "百度网盘"
   },
   "success": {
     "linkCopied": "链接已复制！"
@@ -266,5 +269,16 @@
     "minutes": "分钟",
     "seconds": "秒",
     "unit": "时间单位"
+  },
+  "baiduNetdisk": {
+    "addAuth": "添加百度网盘授权",
+    "inputCode": "请输入授权码",
+    "getCode": "获取授权码",
+    "documentation": "帮助文档",
+    "ordinaryUser": "普通用户",
+    "ordinaryMember": "普通会员",
+    "superMember": "超级会员",
+    "unbind": "解绑",
+    "bindFail": "绑定失败"
   }
 }

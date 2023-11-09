@@ -78,8 +78,12 @@ const mutations = {
       state.user[field] = value[field];
     }
   },
+  updateReq(state, value) {
+    state.req = value;
+  },
   updateRequest: (state, value) => {
-    const selectedItems = state.selected.map((i) => state.req.items[i]);
+    const selectedItems =
+      (state.req.items && state.selected.map((i) => state.req.items[i])) || [];
     state.oldReq = state.req;
     state.req = value;
     state.selected = [];
@@ -112,6 +116,9 @@ const mutations = {
     state.upload.id = 0;
     state.upload.speedMbyte = 0;
     state.upload.eta = 0;
+  },
+  setHandlingType(state, value) {
+    state.handlingType = value;
   },
 };
 

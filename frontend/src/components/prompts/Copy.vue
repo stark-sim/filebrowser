@@ -12,7 +12,7 @@
 
     <div
       class="card-action"
-      style="display: flex; align-items: center; justify-content: space-between;"
+      style="display: flex; align-items: center; justify-content: space-between"
     >
       <template v-if="user.perm.create">
         <button
@@ -20,7 +20,7 @@
           @click="$refs.fileList.createDir()"
           :aria-label="$t('sidebar.newFolder')"
           :title="$t('sidebar.newFolder')"
-          style="justify-self: left;"
+          style="justify-self: left"
         >
           <span>{{ $t("sidebar.newFolder") }}</span>
         </button>
@@ -36,7 +36,7 @@
         </button>
         <button
           class="button button--flat"
-          @click="copy"
+          @click="copyByType"
           :aria-label="$t('buttons.copy')"
           :title="$t('buttons.copy')"
         >
@@ -50,9 +50,10 @@
 <script>
 import { mapState } from "vuex";
 import FileList from "./FileList.vue";
-import { files as api } from "@/api";
+import { files as api, bdApi } from "@/api";
 import buttons from "@/utils/buttons";
 import * as upload from "@/utils/upload";
+import { removePrefix } from "@/api/utils";
 
 export default {
   name: "copy",
@@ -63,10 +64,42 @@ export default {
       dest: null,
     };
   },
-  computed: mapState(["req", "selected", "user"]),
+  computed: mapState(["req", "selected", "user", "handlingType", "bd"]),
   methods: {
-    copy: async function (event) {
+    copyByType(event) {
       event.preventDefault();
+      if (this.handlingType === "BaiduNetdisk") {
+        this.bdDownload();
+      } else {
+        this.copy();
+      }
+    },
+    bdDownload: async function () {
+      try {
+        buttons.loading("copy");
+        let items = [],
+          target_path = `.${removePrefix(decodeURIComponent(this.dest))}`;
+        for (let item of this.selected) {
+          const { path, isDir: is_dir, fsId: fs_id } = this.bd.req.items[item];
+          items.push({
+            path,
+            is_dir,
+            fs_id,
+            target_path,
+          });
+        }
+        items.forEach((item) => {
+          bdApi.fetchDownload(item);
+        });
+        buttons.success("copy");
+        this.$store.commit("resetSelected");
+        this.$store.commit("closeHovers");
+      } catch (e) {
+        buttons.done("copy");
+        console.log("bd download error:", e);
+      }
+    },
+    copy: async function () {
       let items = [];
 
       // Create a new promise for each file.

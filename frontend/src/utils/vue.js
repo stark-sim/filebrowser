@@ -30,7 +30,7 @@ Vue.prototype.$showSuccess = (message) => {
   ).show();
 };
 
-Vue.prototype.$showError = (error, displayReport = true) => {
+Vue.prototype.$showError = (error, displayReport = true, timeout = null) => {
   let btns = [
     Noty.button(i18n.t("buttons.close"), "", function () {
       n.close();
@@ -51,7 +51,7 @@ Vue.prototype.$showError = (error, displayReport = true) => {
     Object.assign({}, notyDefault, {
       text: error.message || error,
       type: "error",
-      timeout: null,
+      timeout,
       buttons: btns,
     })
   );
