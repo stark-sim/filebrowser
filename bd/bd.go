@@ -190,6 +190,5 @@ func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error)
 	for _, info := range DownloadingMap {
 		info.Percentage = float64(info.Current) / float64(info.Size)
 	}
-
 	return DownloadingMap, nil
 }

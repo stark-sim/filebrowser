@@ -25,8 +25,8 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 	begin := time.Now()
 	queueChannel = make(chan struct{}, runtime.NumCPU())
 	switch {
-	case size > 100*MB:
-		sum := size / (100 * MB)
+	case size > 10*MB:
+		sum := size / (10 * MB)
 		DownloadingMap[path+outputFilename] = &Temple{
 			Size:    int(sum),
 			Current: 0,
@@ -111,7 +111,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 func doRequest(uri string, index uint64, restart int, filename string, isEnd bool, wg *sync.WaitGroup) {
 	fileInfo, err := os.Stat(filename + strconv.FormatUint(index, 10))
 
-	if err == nil && fileInfo.Size() == int64(100*MB) {
+	if err == nil && fileInfo.Size() == int64(10*MB) {
 		logrus.Info("切片文件:", filename+strconv.FormatUint(index, 10), "已存在且完整，跳过下载此切片文件")
 		DownloadingMap[filename].Current++
 		wg.Done()
@@ -123,9 +123,9 @@ func doRequest(uri string, index uint64, restart int, filename string, isEnd boo
 		"User-Agent": "pan.baidu.com",
 	}
 	if isEnd {
-		headers["Range"] = "bytes=" + strconv.FormatUint(100*MB*index, 10) + "-"
+		headers["Range"] = "bytes=" + strconv.FormatUint(10*MB*index, 10) + "-"
 	} else {
-		headers["Range"] = "bytes=" + strconv.FormatUint(100*MB*index, 10) + "-" + strconv.FormatUint(100*MB*(index+1)-1, 10)
+		headers["Range"] = "bytes=" + strconv.FormatUint(10*MB*index, 10) + "-" + strconv.FormatUint(10*MB*(index+1)-1, 10)
 	}
 	var postBody io.Reader
 	body, statusCode, err := Do2HTTPRequest(uri, postBody, headers)
