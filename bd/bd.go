@@ -186,11 +186,10 @@ type DownloadProgressReq struct {
 	FileName string `json:"file_name"`
 }
 
-func (req DownloadProgressReq) GetDownloadProgress() (*Temple, error) {
-	temple := DownloadingMap[req.FileName]
-	if temple == nil {
-		return nil, errors.New("该文件下载结束或未下载")
+func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
+	for _, info := range DownloadingMap {
+		info.Percentage = float64(info.Current) / float64(info.Size)
 	}
-	temple.Percentage = float64(temple.Current) / float64(temple.Size)
-	return temple, nil
+
+	return DownloadingMap, nil
 }
