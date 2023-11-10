@@ -28,6 +28,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		sum := size / (10 * MB)
 		DownloadingMap[path+outputFilename] = &Temple{
 			Size:    int(sum + 1),
+			SizeB:   size,
 			Current: 0,
 		}
 		var wg sync.WaitGroup
@@ -113,6 +114,7 @@ func doRequest(uri string, index uint64, restart int, filename string, isEnd boo
 	if err == nil && fileInfo.Size() == int64(10*MB) {
 		logrus.Info("切片文件:", filename+strconv.FormatUint(index, 10), "已存在且完整，跳过下载此切片文件")
 		DownloadingMap[filename].Current++
+		DownloadingMap[filename].CurrentB += 10 * MB
 		wg.Done()
 		return
 	}
@@ -183,5 +185,6 @@ func doRequest(uri string, index uint64, restart int, filename string, isEnd boo
 	}
 	<-queueChannel
 	DownloadingMap[filename].Current++
+	DownloadingMap[filename].CurrentB += 10 * MB
 	wg.Done()
 }

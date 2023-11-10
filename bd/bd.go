@@ -22,7 +22,9 @@ var (
 
 type Temple struct {
 	Size       int     `json:"size"`
+	SizeB      uint64  `json:"size_b"`
 	Current    int     `json:"current"`
+	CurrentB   uint64  `json:"current_b"`
 	Percentage float64 `json:"percentage"`
 }
 
@@ -187,11 +189,9 @@ type DownloadProgressReq struct {
 }
 
 func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
-	for key, info := range DownloadingMap {
+	for _, info := range DownloadingMap {
 		info.Percentage = float64(info.Current) / float64(info.Size)
-		if info.Percentage >= 1 {
-			delete(DownloadingMap, key)
-		}
+
 	}
 	return DownloadingMap, nil
 }
