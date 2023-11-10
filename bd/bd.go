@@ -187,8 +187,11 @@ type DownloadProgressReq struct {
 }
 
 func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
-	for _, info := range DownloadingMap {
+	for key, info := range DownloadingMap {
 		info.Percentage = float64(info.Current) / float64(info.Size)
+		if info.Percentage >= 1 {
+			delete(DownloadingMap, key)
+		}
 	}
 	return DownloadingMap, nil
 }
