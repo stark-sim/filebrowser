@@ -20,7 +20,7 @@ var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	resp, err := userInfoReq.GetUserInfo()
 	if err != nil {
 		logrus.Error(err)
-		return http.StatusInternalServerError, nil
+		return http.StatusUnauthorized, nil
 	}
 	logrus.Info(resp)
 	marshal, err := json.Marshal(resp)
@@ -43,7 +43,7 @@ var bdLogin = func(w http.ResponseWriter, r *http.Request, d *data) (int, error)
 	}
 	accessToken, err := loginInfo.VerifyCode()
 	if err != nil {
-		return http.StatusInternalServerError, nil
+		return http.StatusUnauthorized, nil
 	}
 	if accessToken == "" {
 		return http.StatusUnauthorized, nil
