@@ -3,6 +3,7 @@ import Router from "vue-router";
 import Login from "@/views/Login.vue";
 import Layout from "@/views/Layout.vue";
 import Files from "@/views/Files.vue";
+import BaiduNetdisk from "@/views/BaiduNetdisk.vue";
 import Share from "@/views/Share.vue";
 import Users from "@/views/settings/Users.vue";
 import User from "@/views/settings/User.vue";
@@ -61,6 +62,14 @@ const router = new Router({
           path: "/files/*",
           name: "Files",
           component: Files,
+          meta: {
+            requiresAuth: true,
+          },
+        },
+        {
+          path: "/baidu-netdisk/*",
+          name: "BaiduNetdisk",
+          component: BaiduNetdisk,
           meta: {
             requiresAuth: true,
           },
@@ -143,6 +152,12 @@ const router = new Router({
           path: "/files",
           redirect: {
             path: "/files/",
+          },
+        },
+        {
+          path: "/baidu-netdisk",
+          redirect: {
+            path: "/baidu-netdisk/",
           },
         },
         {

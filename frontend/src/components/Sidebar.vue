@@ -35,6 +35,18 @@
 
       <div>
         <button
+          @click="toBaiduNetdisk"
+          class="action"
+          :aria-label="$t('sidebar.baiduNetdisk')"
+          :title="$t('sidebar.baiduNetdisk')"
+        >
+          <img class="icon" src="@/assets/img/baidu-netdisk-icon.png" />
+          <span>{{ $t("sidebar.baiduNetdisk") }}</span>
+        </button>
+      </div>
+
+      <div>
+        <button
           class="action"
           @click="toSettings"
           :aria-label="$t('sidebar.settings')"
@@ -184,6 +196,10 @@ export default {
       this.$store.commit("showHover", "help");
     },
     logout: auth.logout,
+    toBaiduNetdisk() {
+      this.$router.push({ path: "/baidu-netdisk/" }, () => {});
+      this.$store.commit("closeHovers");
+    },
   },
 };
 </script>

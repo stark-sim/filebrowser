@@ -15,6 +15,7 @@
 @import "./dashboard.css";
 @import "./login.css";
 @import "./mobile.css";
+@import "./baidu-netdisk.css";
 
 .link {
   color: var(--blue);
@@ -91,6 +92,17 @@ main .spinner .bounce2 {
   padding: 0.4em;
   transition: 0.1s ease-in-out all;
   border-radius: 50%;
+}
+
+/* 百度网盘 icon */
+.action .icon {
+  display: inline-block;
+  box-sizing: content-box;
+  padding: 0.4em;
+  width: 1.5rem;
+  transition: 0.1s ease-in-out all;
+  border-radius: 50%;
+  font-size: 1.5rem;
 }
 
 .action:hover {

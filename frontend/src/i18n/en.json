@@ -38,7 +38,8 @@
     "update": "Update",
     "upload": "Upload",
     "openFile": "Open file",
-    "continue": "Continue"
+    "continue": "Continue",
+    "add": "Add"
   },
   "download": {
     "downloadFile": "Download File",
@@ -160,7 +161,8 @@
     "upload": "Upload",
     "uploadFiles": "Uploading {files} files...",
     "uploadMessage": "Select an option to upload.",
-    "optionalPassword": "Optional password"
+    "optionalPassword": "Optional password",
+    "copyFiles": "Copying {files} files..."
   },
   "search": {
     "images": "Images",
@@ -268,10 +270,12 @@
     "preview": "Preview",
     "settings": "Settings",
     "signup": "Signup",
-    "siteSettings": "Site Settings"
+    "siteSettings": "Site Settings",
+    "baiduNetdisk": "Baidu Netdisk"
   },
   "success": {
-    "linkCopied": "Link copied!"
+    "linkCopied": "Link copied!",
+    "filesCopied": "Files copied!"
   },
   "time": {
     "days": "Days",
@@ -279,5 +283,16 @@
     "minutes": "Minutes",
     "seconds": "Seconds",
     "unit": "Time Unit"
+  },
+  "baiduNetdisk": {
+    "addAuth": "Add Baidu Netdisk authorization",
+    "inputCode": "Code",
+    "getCode": "Get Code",
+    "documentation": "documentation",
+    "ordinaryUser": "Ordinary User",
+    "ordinaryMember": "Ordinary Member",
+    "superMember": "Super Member",
+    "unbind": "unbind",
+    "bindFail": "Binding failed"
   }
 }

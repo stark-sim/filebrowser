@@ -1,0 +1,44 @@
+/* AutoLogin */
+#netdisk-login .link {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* user info */
+.netdisk-info {
+  display: flex;
+  align-items: center;
+  height: 3em;
+}
+
+.netdisk-info + * {
+  padding-bottom: .25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);  
+}
+
+.netdisk-info img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.netdisk-info span {
+  margin-left: .5rem;
+}
+
+.netdisk-info p {
+  flex: 1;
+}
+
+.netdisk-info .action {
+  padding: .25rem;
+  border-radius: 0;
+}
+
+.netdisk-info .action > * {
+vertical-align: middle;
+}
+
+/* copy files */
+.netdisk-copy-files .file-progress {
+  background: rgb(238, 238, 238);
+}
