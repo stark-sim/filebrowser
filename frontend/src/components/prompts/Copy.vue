@@ -94,6 +94,11 @@ export default {
         buttons.success("copy");
         this.$store.commit("resetSelected");
         this.$store.commit("closeHovers");
+
+        // 由于调下载接口再查询 progress 有延迟
+        window.setTimeout(() => {
+          this.$store.commit("bd/setRefreshCopy", true);
+        }, 1000);
       } catch (e) {
         buttons.done("copy");
         console.log("bd download error:", e);

@@ -37,3 +37,8 @@
 .netdisk-info .action > * {
 vertical-align: middle;
 }
+
+/* copy files */
+.netdisk-copy-files .file-progress {
+  background: rgb(238, 238, 238);
+}

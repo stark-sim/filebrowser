@@ -161,7 +161,8 @@
     "upload": "Upload",
     "uploadFiles": "Uploading {files} files...",
     "uploadMessage": "Select an option to upload.",
-    "optionalPassword": "Optional password"
+    "optionalPassword": "Optional password",
+    "copyFiles": "Copying {files} files..."
   },
   "search": {
     "images": "Images",
@@ -273,7 +274,8 @@
     "baiduNetdisk": "Baidu Netdisk"
   },
   "success": {
-    "linkCopied": "Link copied!"
+    "linkCopied": "Link copied!",
+    "filesCopied": "Files copied!"
   },
   "time": {
     "days": "Days",
