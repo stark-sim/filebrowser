@@ -18,17 +18,16 @@ import (
 const KB = 1024
 const MB = 1024 * KB
 
-var queueChannel chan struct{}
+var queueChannel = make(chan struct{}, runtime.NumCPU())
 
 func Download(path string, accessToken string, dlink string, outputFilename string, size uint64) error {
 	uri := dlink + "&" + "access_token=" + accessToken
 	begin := time.Now()
-	queueChannel = make(chan struct{}, runtime.NumCPU())
 	switch {
 	case size > 10*MB:
 		sum := size / (10 * MB)
 		DownloadingMap[path+outputFilename] = &Temple{
-			Size:    int(sum),
+			Size:    int(sum + 1),
 			Current: 0,
 		}
 		var wg sync.WaitGroup
