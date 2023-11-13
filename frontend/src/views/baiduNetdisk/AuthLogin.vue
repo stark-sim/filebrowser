@@ -66,15 +66,7 @@ export default {
       try {
         await bdApi.login(this.code);
         await bdApi.fetchUserInfo();
-      } catch (e) {
-        if (e.status === 500) {
-          this.$showError(
-            { message: this.$t("baiduNetdisk.bindFail") },
-            false,
-            1000
-          );
-        }
-      }
+      } catch {}
     },
   },
 };

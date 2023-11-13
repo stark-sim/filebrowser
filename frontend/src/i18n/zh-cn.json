@@ -281,6 +281,7 @@
     "ordinaryMember": "普通会员",
     "superMember": "超级会员",
     "unbind": "解绑",
-    "bindFail": "绑定失败"
+    "bindFail": "绑定失败！",
+    "authExpired": "授权过期！"
   }
 }
