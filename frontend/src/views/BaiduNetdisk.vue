@@ -250,7 +250,7 @@ export default {
       let lastCopyBytes = copyBytes - this.prevBytes;
       let currentSpeed = lastCopyBytes / (1024 * 1024) / elapsedTime;
 
-      if (this.recentSpeeds.length >= 5) {
+      if (this.recentSpeeds.length >= 10) {
         this.recentSpeeds.shift();
       }
       this.recentSpeeds.push(currentSpeed);

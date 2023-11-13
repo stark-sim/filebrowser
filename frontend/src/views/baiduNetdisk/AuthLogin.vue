@@ -22,7 +22,11 @@
             >
               {{ $t("baiduNetdisk.getCode") }}
             </a>
-            <a target="_blank" href="" class="link">
+            <a
+              target="_blank"
+              href="https://cephalon.feishu.cn/docx/UwOud1Quwo1pecxzJHOcNU7TnBg?from=from_copylink"
+              class="link"
+            >
               {{ $t("baiduNetdisk.documentation") }}
             </a>
           </p>
