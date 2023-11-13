@@ -165,6 +165,7 @@ export default {
   methods: {
     ...mapMutations(["setLoading"]),
     async fetchData() {
+      if (!this.user) return;
       // Reset view information.
       this.$store.commit("setReload", false);
       this.$store.commit("resetSelected");
@@ -183,7 +184,12 @@ export default {
       try {
         await bdApi.fetchDir(url);
       } catch (e) {
-        this.error = e;
+        if (e.status === 401) {
+          bdApi.logout();
+          this.$showError(this.$t("baiduNetdisk.authExpired"), false, 1500);
+        } else {
+          this.error = e;
+        }
       } finally {
         this.setLoading(false);
       }
