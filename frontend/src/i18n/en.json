@@ -285,7 +285,7 @@
     "unit": "Time Unit"
   },
   "baiduNetdisk": {
-    "addAuth": "Add Baidu Netdisk authorization",
+    "addAuth": "Add Baidu Netdisk Authorization",
     "inputCode": "Code",
     "getCode": "Get Code",
     "documentation": "documentation",
@@ -293,6 +293,7 @@
     "ordinaryMember": "Ordinary Member",
     "superMember": "Super Member",
     "unbind": "unbind",
-    "bindFail": "Binding failed"
+    "bindFail": "Binding failed!",
+    "authExpired": "Authorization expired!"
   }
 }

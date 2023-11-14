@@ -22,7 +22,11 @@
             >
               {{ $t("baiduNetdisk.getCode") }}
             </a>
-            <a target="_blank" href="" class="link">
+            <a
+              target="_blank"
+              href="https://cephalon.feishu.cn/docx/UwOud1Quwo1pecxzJHOcNU7TnBg?from=from_copylink"
+              class="link"
+            >
               {{ $t("baiduNetdisk.documentation") }}
             </a>
           </p>
@@ -62,15 +66,7 @@ export default {
       try {
         await bdApi.login(this.code);
         await bdApi.fetchUserInfo();
-      } catch (e) {
-        if (e.status === 500) {
-          this.$showError(
-            { message: this.$t("baiduNetdisk.bindFail") },
-            false,
-            1000
-          );
-        }
-      }
+      } catch {}
     },
   },
 };

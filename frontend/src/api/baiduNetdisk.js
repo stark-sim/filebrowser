@@ -1,3 +1,4 @@
+import Vue from "vue";
 import store from "@/store";
 import router from "@/router";
 import { baseURL } from "@/utils/constants";
@@ -5,7 +6,12 @@ import { removePrefix } from "@/api/utils";
 import i18n from "@/i18n";
 
 /* util  */
-async function fetchUtil(url, opts, setAt = true) {
+async function fetchUtil(
+  url,
+  opts,
+  setAt = true,
+  atExpired = "baiduNetdisk.authExpired"
+) {
   opts = opts || {};
   opts.headers = opts.headers || {};
   opts.body = opts.body || {};
@@ -39,8 +45,9 @@ async function fetchUtil(url, opts, setAt = true) {
     const error = new Error(await res.text());
     error.status = res.status;
 
-    if (setAt && res.status === 401) {
-      logout();
+    if (res.status === 401) {
+      atExpired && Vue.prototype.$showError(i18n.t(atExpired), false, 1500);
+      setAt && logout();
     }
 
     throw error;
@@ -76,7 +83,8 @@ export async function login(code) {
       method: "POST",
       body: { code },
     },
-    false
+    false,
+    "baiduNetdisk.bindFail"
   );
   if (access_token) {
     saveToken(access_token);
@@ -138,11 +146,15 @@ export async function fetchDir(url = "/") {
     body: { path },
   });
 
-  if (errno === -7) {
+  if (errno === -6) {
+    throw { status: 401 };
+  } else if (errno === -7) {
     throw { status: 403 };
   } else if (errno === -9) {
     throw { status: 404 };
   }
+
+  if (!list) return;
 
   let nameArr = path.split("/"),
     name = nameArr[nameArr.length - 2] || i18n.t("sidebar.baiduNetdisk");
