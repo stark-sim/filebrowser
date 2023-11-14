@@ -65,7 +65,7 @@ var bdShowDirInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, 
 	info, err := showDirInfo.ShowDirInfo()
 	if err != nil {
 		if errors.Is(err, bd.InvalidAuth) {
-			return http.StatusForbidden, err
+			return http.StatusUnauthorized, err
 		}
 		return http.StatusInternalServerError, err
 
@@ -90,7 +90,7 @@ var bdDownLoad = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	_, err = downloadInfo.ShowDirInfo()
 	if err != nil {
 		if errors.Is(err, bd.InvalidAuth) {
-			return http.StatusForbidden, err
+			return http.StatusUnauthorized, err
 		}
 		return http.StatusInternalServerError, err
 	}
