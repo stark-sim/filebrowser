@@ -96,7 +96,10 @@ export function logout() {
   store.commit("bd/setUser", "");
   store.commit("bd/updateReq", {});
   localStorage.setItem("bdAt", null);
-  router.push({ path: "/baidu-netdisk" });
+
+  if (router.currentRoute.path !== "/baidu-netdisk/") {
+    router.push({ path: "/baidu-netdisk" });
+  }
 }
 
 // Format the chunk size in bytes to user-friendly format
