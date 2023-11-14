@@ -78,7 +78,7 @@ export function getToken() {
 
 export async function login(code) {
   const { access_token } = await fetchUtil(
-    `${baseURL}/api/bd/login`,
+    "/api/bd/login",
     {
       method: "POST",
       body: { code },
@@ -121,7 +121,7 @@ export async function fetchUserInfo() {
     has_used,
     is_vip = 0,
     total_cap,
-  } = await fetchUtil(`${baseURL}/api/bd/user-info`, {
+  } = await fetchUtil("/api/bd/user-info", {
     method: "POST",
   });
   const vipMap = {
@@ -144,7 +144,7 @@ export async function fetchDir(url = "/") {
   let path = removePrefix(url);
   if (path.slice(-1) !== "/") path += "/";
   let rooturl = `/baidu-netdisk${path}`;
-  const { errno, list } = await fetchUtil(`${baseURL}/api/bd/dir`, {
+  const { errno, list } = await fetchUtil("/api/bd/dir", {
     method: "POST",
     body: { path },
   });
@@ -228,14 +228,14 @@ export async function fetchDir(url = "/") {
 
 // path、is_dir、fs_id、target_path
 export function fetchDownload(data) {
-  return fetchUtil(`${baseURL}/api/bd/download`, {
+  return fetchUtil("/api/bd/download", {
     method: "POST",
     body: data,
   });
 }
 
 export function fetchProgress() {
-  return fetchUtil(`${baseURL}/api/bd/progress`, {
+  return fetchUtil("/api/bd/progress", {
     method: "POST",
   });
 }
