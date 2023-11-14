@@ -12,9 +12,13 @@
 
     <div
       class="card-action"
-      style="display: flex; align-items: center; justify-content: space-between"
+      :style="
+        showNewFolder
+          ? 'display: flex; align-items: center; justify-content: space-between'
+          : ''
+      "
     >
-      <template v-if="user.perm.create">
+      <template v-if="showNewFolder">
         <button
           class="button button--flat"
           @click="$refs.fileList.createDir()"
@@ -64,7 +68,12 @@ export default {
       dest: null,
     };
   },
-  computed: mapState(["req", "selected", "user", "handlingType", "bd"]),
+  computed: {
+    ...mapState(["req", "selected", "user", "handlingType", "bd"]),
+    showNewFolder() {
+      return this.user.perm.create && this.$route.path.includes("/files");
+    },
+  },
   methods: {
     copyByType(event) {
       event.preventDefault();
