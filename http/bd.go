@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/filebrowser/filebrowser/v2/bd"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -59,11 +60,15 @@ var bdShowDirInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, 
 	var showDirInfo bd.ShowDirInfoReq
 	err := json.Unmarshal(all, &showDirInfo)
 	if err != nil {
-		return renderJSON(w, r, err)
+		return http.StatusInternalServerError, err
 	}
 	info, err := showDirInfo.ShowDirInfo()
 	if err != nil {
-		return renderJSON(w, r, err)
+		if errors.Is(err, bd.InvalidAuth) {
+			return http.StatusForbidden, err
+		}
+		return http.StatusInternalServerError, err
+
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if _, err := w.Write([]byte(*info)); err != nil {
@@ -79,12 +84,19 @@ var bdDownLoad = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	err := json.Unmarshal(all, &downloadInfo)
 	if err != nil {
 		logrus.Error(err)
-		return renderJSON(w, r, err)
+		return http.StatusInternalServerError, err
 	}
 	logrus.Info(downloadInfo)
+	_, err = downloadInfo.ShowDirInfo()
+	if err != nil {
+		if errors.Is(err, bd.InvalidAuth) {
+			return http.StatusForbidden, err
+		}
+		return http.StatusInternalServerError, err
+	}
 	err = downloadInfo.Download()
 	if err != nil {
-		return renderJSON(w, r, err)
+		return http.StatusInternalServerError, err
 	}
 	return renderJSON(w, r, d)
 }

@@ -88,10 +88,23 @@ type ShowDirInfoReq struct {
 	AccessToken string `json:"access_token"`
 }
 
+var InvalidAuth = errors.New("invalid_auth")
+
 func (req ShowDirInfoReq) ShowDirInfo() (*string, error) {
 	response, _, err := apiClient.FileinfoApi.Xpanfilelist(context.Background()).AccessToken(req.AccessToken).Dir(req.Path).Execute()
 	if err != nil {
 		return nil, err
+	}
+	logrus.Info(response)
+	var respStruct struct {
+		Errno int `json:"errno"`
+	}
+	err = json.Unmarshal([]byte(response), &respStruct)
+	if err != nil {
+		return nil, err
+	}
+	if respStruct.Errno == -6 {
+		return nil, InvalidAuth
 	}
 	return &response, nil
 }
@@ -104,6 +117,23 @@ type DownloadInfoReq struct {
 	AccessToken string `json:"access_token"`
 }
 
+func (req DownloadInfoReq) ShowDirInfo() (*string, error) {
+	response, _, err := apiClient.FileinfoApi.Xpanfilelist(context.Background()).AccessToken(req.AccessToken).Dir("/").Execute()
+	if err != nil {
+		return nil, err
+	}
+	var respStruct struct {
+		Errno int `json:"errno"`
+	}
+	err = json.Unmarshal([]byte(response), &respStruct)
+	if err != nil {
+		return nil, err
+	}
+	if respStruct.Errno == -6 {
+		return nil, InvalidAuth
+	}
+	return &response, nil
+}
 func (req DownloadInfoReq) Download() error {
 	switch req.IsDir {
 	case true:
@@ -119,10 +149,14 @@ func (req DownloadInfoReq) Download() error {
 				FsID     int64  `json:"fs_id"`
 			} `json:"list"`
 		}
+
 		err = json.Unmarshal([]byte(response), &readFileListRespBody)
 		if err != nil {
 			logrus.Error(err)
 			return err
+		}
+		if readFileListRespBody.Errno != 0 {
+			return errors.New("出现了问题")
 		}
 		var fsIDs = make([]uint64, 0)
 		for _, fileInfo := range readFileListRespBody.List {
