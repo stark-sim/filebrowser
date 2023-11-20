@@ -66,6 +66,7 @@ var bdShowDirInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, 
 	if err != nil {
 		if errors.Is(err, bd.InvalidAuth) {
 			return http.StatusUnauthorized, err
+
 		}
 		return http.StatusInternalServerError, err
 
