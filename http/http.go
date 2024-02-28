@@ -88,11 +88,17 @@ func NewHandler(
 	public := api.PathPrefix("/public").Subrouter()
 	public.PathPrefix("/dl").Handler(monkey(publicDlHandler, "/api/public/dl/")).Methods("GET")
 	public.PathPrefix("/share").Handler(monkey(publicShareHandler, "/api/public/share/")).Methods("GET")
+
+	// 百度网盘相关接口
 	bd := api.PathPrefix("/bd").Subrouter()
 	bd.PathPrefix("/login").Handler(monkey(bdLogin, "/api/bd/login/")).Methods("POST")
 	bd.PathPrefix("/user-info").Handler(monkey(bdUserInfo, "/api/bd/user-info/")).Methods("POST")
 	bd.PathPrefix("/dir").Handler(monkey(bdShowDirInfo, "/api/bd/dir/")).Methods("POST")
 	bd.PathPrefix("/download").Handler(monkey(bdDownLoad, "/api/bd/download/")).Methods("POST")
 	bd.PathPrefix("/progress").Handler(monkey(bdDownloadProgress, "/api/bd/progress/")).Methods("POST")
+
+	// 端脑云存储相关接口
+	cephalonDisk := api.PathPrefix("/cd").Subrouter()
+	cephalonDisk.PathPrefix("/").Handler(monkey(cephalonDiskDownload, "/api/cd/download")).Methods("POST")
 	return stripPrefix(server.BaseURL, r), nil
 }
