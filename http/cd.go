@@ -26,7 +26,7 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	myelinHost := os.Getenv("MYELIN_HOST")
 
 	// 调用接口进行下载
-	req, _ := http.NewRequest("GET", myelinHost+"/"+input.MD5, nil)
+	req, _ := http.NewRequest("GET", myelinHost+"/download/"+input.MD5, nil)
 	myelinResponse, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println("myelin do err")
