@@ -12,6 +12,7 @@ import GlobalSettings from "@/views/settings/Global.vue";
 import ProfileSettings from "@/views/settings/Profile.vue";
 import Shares from "@/views/settings/Shares.vue";
 import Errors from "@/views/Errors.vue";
+import Test from "@/views/Test.vue";
 import store from "@/store";
 import { baseURL, name } from "@/utils/constants";
 import i18n, { rtlLanguages } from "@/i18n";
@@ -159,6 +160,10 @@ const router = new Router({
           redirect: {
             path: "/baidu-netdisk/",
           },
+        },
+        {
+          path: "/test",
+          component: Test,
         },
         {
           path: "/*",
