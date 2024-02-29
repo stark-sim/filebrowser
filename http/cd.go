@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+const DirInfoURL = "https://"
+
 type downloadInput struct {
 	MD5      string `json:"md5"`
 	Target   string `json:"target"`
@@ -48,4 +50,28 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	}
 
 	return http.StatusCreated, nil
+}
+
+var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
+	// 向user_center请求用户信息
+	request, err := http.NewRequest("GET", DirInfoURL, nil)
+	if err != nil {
+		fmt.Printf("http.NewRequest err")
+		return 0, err
+	}
+	query := request.URL.Query()
+	query.Add("user_id", os.Getenv("USER_ID"))
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		fmt.Printf("http.DefaultClient.Do err")
+		return http.StatusInternalServerError, err
+	}
+	defer resp.Body.Close()
+	// 读取返回的数据
+	body, err := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, err := w.Write(body); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return 0, nil
 }
