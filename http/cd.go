@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 const DirInfoURL = "https://"
@@ -18,27 +19,43 @@ type downloadInput struct {
 
 var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 	defer r.Body.Close()
-	inputBody, _ := io.ReadAll(r.Body)
+
+	inputBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	var input downloadInput
 	if err := json.Unmarshal(inputBody, &input); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
-	// 从环境变量 MYELIN_HOST 读取下载文件的节点地址
 	myelinHost := os.Getenv("MYELIN_HOST")
 
-	// 调用接口进行下载
-	req, _ := http.NewRequest("GET", myelinHost+"/download/"+input.MD5, nil)
+	req, err := http.NewRequest("GET", myelinHost+"/download/"+input.MD5, nil)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	myelinResponse, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println("myelin do err")
 		return http.StatusInternalServerError, err
 	}
-	fmt.Printf("myelin response code is  %d\n", myelinResponse.StatusCode)
-	// body 就是文件流，直接下载
 	defer myelinResponse.Body.Close()
-	// 准备好新文件坑位
-	newFile, err := os.Create(input.Filename)
+
+	fmt.Printf("myelin response code is %d\n", myelinResponse.StatusCode)
+	if myelinResponse.StatusCode == 404 {
+		return http.StatusNotFound, nil
+	}
+
+	//todo 节点正在爬取文件，稍后再试
+	if err := os.MkdirAll(input.Target, os.ModePerm); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	// 创建目标文件
+	filePath := filepath.Join(input.Target, input.Filename)
+	newFile, err := os.Create(filePath)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
