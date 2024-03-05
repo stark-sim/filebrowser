@@ -45,14 +45,21 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	defer myelinResponse.Body.Close()
 
 	fmt.Printf("myelin response code is %d\n", myelinResponse.StatusCode)
+	//文件不存在
 	if myelinResponse.StatusCode == 404 {
 		return http.StatusNotFound, nil
 	}
 
-	//todo 节点正在爬取文件，稍后再试
+	//文件正在向master节点爬取,请稍后尝试
+	if myelinResponse.StatusCode == 302 {
+		return http.StatusFound, nil
+	}
+
+	//确认目标文件夹存在
 	if err := os.MkdirAll(input.Target, os.ModePerm); err != nil {
 		return http.StatusInternalServerError, err
 	}
+
 	// 创建目标文件
 	filePath := filepath.Join(input.Target, input.Filename)
 	newFile, err := os.Create(filePath)
@@ -60,6 +67,8 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 		return http.StatusInternalServerError, err
 	}
 	defer newFile.Close()
+
+	//复制文件
 	_, err = io.Copy(newFile, myelinResponse.Body)
 	if err != nil {
 		fmt.Printf("io copy err")
@@ -69,7 +78,7 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	return http.StatusCreated, nil
 }
 
-var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
+/*var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
 	// 向user_center请求用户信息
 	request, err := http.NewRequest("GET", DirInfoURL, nil)
 	if err != nil {
@@ -91,4 +100,4 @@ var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int
 		return http.StatusInternalServerError, err
 	}
 	return 0, nil
-}
+}*/
