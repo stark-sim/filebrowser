@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-const DirInfoURL = "https://www.rosabi.cn/user-center/v1/cloud-files"
+const DirInfoURL = "https://cephalon.cloud/user-center/v1/cloud-files"
 
 type downloadInput struct {
 	MD5      string `json:"md5"`
