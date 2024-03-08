@@ -86,7 +86,6 @@ export default {
       }
     },
     cepDownload: async function () {
-      console.log(this.selected);
       try {
         buttons.loading("copy");
         let items = [],
@@ -99,17 +98,17 @@ export default {
             filename: name,
           });
         }
-        // let temp = [];
-        console.log(items);
         for (let item of items) {
           await cepApi.fetchDownload(item);
         }
-
+        this.$showSuccess(this.$t("success.filesCopied"));
         // 由于调下载接口再查询 progress 有延迟
         // window.setTimeout(() => {
         //   this.$store.commit("bd/setRefreshCopy", true);
         // }, 1000);
       } catch (e) {
+        if (e.status === 302)
+          this.$showError({ message: this.$t("errors.retry") });
         buttons.done("copy");
         console.log("cep download error:", e);
       } finally {

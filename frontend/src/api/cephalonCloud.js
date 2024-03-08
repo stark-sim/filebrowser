@@ -30,11 +30,11 @@ async function fetchUtil(
       body,
       ...rest,
     });
-  } catch {
-    const error = new Error("000 No connection");
-    error.status = 0;
+  } catch (e) {
+    // const error = new Error("000 No connection");
+    // error.status = 0;
 
-    throw error;
+    throw e;
   }
 
   if (res.status < 200 || res.status > 299) {
@@ -48,7 +48,6 @@ async function fetchUtil(
 
     throw error;
   }
-  console.log(res.status >= 200 && res.status <= 299);
   if (res.status >= 200 && res.status <= 299) {
     return await res;
   } else {

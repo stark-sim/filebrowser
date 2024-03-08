@@ -2,7 +2,7 @@ function loading(button) {
   let el = document.querySelector(`#${button}-button > i`);
 
   if (el === undefined || el === null) {
-    console.log('Error getting button ' + button) // eslint-disable-line
+    console.log("Error getting button " + button); // eslint-disable-line
     return;
   }
 
@@ -24,7 +24,7 @@ function done(button) {
   let el = document.querySelector(`#${button}-button > i`);
 
   if (el === undefined || el === null) {
-    console.log('Error getting button ' + button) // eslint-disable-line
+    console.log("Error getting button " + button); // eslint-disable-line
     return;
   }
 
@@ -41,12 +41,10 @@ function success(button) {
   let el = document.querySelector(`#${button}-button > i`);
 
   if (el === undefined || el === null) {
-    console.log('Error getting button ' + button) // eslint-disable-line
+    console.log("Error getting button " + button); // eslint-disable-line
     return;
   }
-
   el.style.opacity = 0;
-
   setTimeout(() => {
     el.classList.remove("spin");
     el.innerHTML = "done";
