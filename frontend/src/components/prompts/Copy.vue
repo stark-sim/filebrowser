@@ -54,7 +54,7 @@
 <script>
 import { mapState } from "vuex";
 import FileList from "./FileList.vue";
-import { files as api, bdApi } from "@/api";
+import { files as api, bdApi, cepApi } from "@/api";
 import buttons from "@/utils/buttons";
 import * as upload from "@/utils/upload";
 import { removePrefix } from "@/api/utils";
@@ -69,7 +69,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(["req", "selected", "user", "handlingType", "bd"]),
+    ...mapState(["req", "selected", "user", "handlingType", "bd", "cep"]),
     showNewFolder() {
       return this.user.perm.create && this.$route.path.includes("/files");
     },
@@ -79,8 +79,43 @@ export default {
       event.preventDefault();
       if (this.handlingType === "BaiduNetdisk") {
         this.bdDownload();
+      } else if (this.handlingType === "CephalonCloud") {
+        this.cepDownload();
       } else {
         this.copy();
+      }
+    },
+    cepDownload: async function () {
+      console.log(this.selected);
+      try {
+        buttons.loading("copy");
+        let items = [],
+          target_path = `.${removePrefix(decodeURIComponent(this.dest))}`;
+        for (let item of this.selected) {
+          const { name, md5 } = this.cep.req.items[item];
+          items.push({
+            md5,
+            target: target_path,
+            filename: name,
+          });
+        }
+        // let temp = [];
+        console.log(items);
+        for (let item of items) {
+          await cepApi.fetchDownload(item);
+        }
+
+        // 由于调下载接口再查询 progress 有延迟
+        // window.setTimeout(() => {
+        //   this.$store.commit("bd/setRefreshCopy", true);
+        // }, 1000);
+      } catch (e) {
+        buttons.done("copy");
+        console.log("cep download error:", e);
+      } finally {
+        buttons.success("copy");
+        this.$store.commit("resetSelected");
+        this.$store.commit("closeHovers");
       }
     },
     bdDownload: async function () {

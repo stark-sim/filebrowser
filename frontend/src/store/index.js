@@ -4,6 +4,7 @@ import mutations from "./mutations";
 import getters from "./getters";
 import upload from "./modules/upload";
 import bd from "./modules/baiduNetdisk";
+import cep from "./modules/cephalonCloud"
 
 Vue.use(Vuex);
 
@@ -31,5 +32,5 @@ export default new Vuex.Store({
   state,
   getters,
   mutations,
-  modules: { upload, bd },
+  modules: { upload, bd ,cep},
 });

@@ -60,6 +60,10 @@ header .menu-button {
   display: none;
 }
 
+header .title{
+  margin-right: 300px; font-weight: 800
+}
+
 #more {
   display: none;
 }

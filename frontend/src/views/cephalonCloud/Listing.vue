@@ -1,10 +1,10 @@
 <template>
   <div>
     <header-bar showMenu showLogo>
-      <span v-if="application != 'undefined'" class="title"
+      <span v-if="application?.length > 1" class="title"
         >「{{ application }}」 文件管理器</span
       >
-      <search />
+      <!-- <search /> -->
       <title />
       <action
         class="search-button"
@@ -15,7 +15,7 @@
 
       <template #actions>
         <template v-if="!isMobile">
-          <action
+          <!-- <action
             v-if="headerButtons.share"
             icon="share"
             :label="$t('buttons.share')"
@@ -26,15 +26,16 @@
             icon="mode_edit"
             :label="$t('buttons.rename')"
             show="rename"
-          />
+          /> -->
           <action
             v-if="headerButtons.copy"
             id="copy-button"
             icon="content_copy"
             :label="$t('buttons.copyFile')"
-            show="copy"
+            :counter="selectedCount"
+            @action="copyToFiles"
           />
-          <action
+          <!-- <action
             v-if="headerButtons.move"
             id="move-button"
             icon="forward"
@@ -47,21 +48,21 @@
             icon="delete"
             :label="$t('buttons.delete')"
             show="delete"
-          />
+          /> -->
         </template>
 
-        <action
+        <!-- <action
           v-if="headerButtons.shell"
           icon="code"
           :label="$t('buttons.shell')"
           @action="$store.commit('toggleShell')"
-        />
+        /> -->
         <action
           :icon="viewIcon"
           :label="$t('buttons.switchView')"
           @action="switchView"
         />
-        <action
+        <!-- <action
           v-if="headerButtons.download"
           icon="file_download"
           :label="$t('buttons.download')"
@@ -74,7 +75,7 @@
           id="upload-button"
           :label="$t('buttons.upload')"
           @action="upload"
-        />
+        /> -->
         <action icon="info" :label="$t('buttons.info')" show="info" />
         <action
           icon="check_circle"
@@ -87,34 +88,10 @@
     <div v-if="isMobile" id="file-selection">
       <span v-if="selectedCount > 0">{{ selectedCount }} selected</span>
       <action
-        v-if="headerButtons.share"
-        icon="share"
-        :label="$t('buttons.share')"
-        show="share"
-      />
-      <action
-        v-if="headerButtons.rename"
-        icon="mode_edit"
-        :label="$t('buttons.rename')"
-        show="rename"
-      />
-      <action
         v-if="headerButtons.copy"
         icon="content_copy"
         :label="$t('buttons.copyFile')"
-        show="copy"
-      />
-      <action
-        v-if="headerButtons.move"
-        icon="forward"
-        :label="$t('buttons.moveFile')"
-        show="move"
-      />
-      <action
-        v-if="headerButtons.delete"
-        icon="delete"
-        :label="$t('buttons.delete')"
-        show="delete"
+        @action="copyToFiles"
       />
     </div>
 
@@ -205,7 +182,7 @@
         <div v-if="req.numDirs > 0">
           <item
             v-for="item in dirs"
-            :key="base64(item.name)"
+            :key="base64(item.index)"
             v-bind:index="item.index"
             v-bind:name="item.name"
             v-bind:isDir="item.isDir"
@@ -222,15 +199,15 @@
         <div v-if="req.numFiles > 0">
           <item
             v-for="item in files"
-            :key="base64(item.name)"
+            :key="item.index"
             v-bind:index="item.index"
             v-bind:name="item.name"
             v-bind:isDir="item.isDir"
             v-bind:url="item.url"
-            v-bind:modified="item.modified"
+            v-bind:modified="item.updated_at"
             v-bind:type="item.type"
             v-bind:size="item.size"
-            v-bind:path="item.path"
+            v-bind:icon="item.icon"
           >
           </item>
         </div>
@@ -273,15 +250,13 @@
 import Vue from "vue";
 import { mapState, mapGetters, mapMutations } from "vuex";
 import { users, files as api } from "@/api";
-import { enableExec } from "@/utils/constants";
-import * as upload from "@/utils/upload";
 import css from "@/utils/css";
 import throttle from "lodash.throttle";
 
 import HeaderBar from "@/components/header/HeaderBar.vue";
 import Action from "@/components/header/Action.vue";
 import Search from "@/components/Search.vue";
-import Item from "@/components/files/ListingItem.vue";
+import Item from "@/components/cloud/ListingItem.vue";
 
 export default {
   name: "listing",
@@ -295,14 +270,15 @@ export default {
     return {
       showLimit: 50,
       columnWidth: 280,
-      dragCounter: 0,
+      // dragCounter: 0,
       width: window.innerWidth,
       itemWeight: 0,
       application: "",
     };
   },
   computed: {
-    ...mapState(["req", "selected", "user", "multiple", "selected", "loading"]),
+    ...mapState("cep", ["req", "loading"]),
+    ...mapState(["selected", "user", "multiple", "loading"]),
     ...mapGetters(["selectedCount", "currentPrompt"]),
     nameSorted() {
       return this.req.sorting.by === "name";
@@ -371,13 +347,6 @@ export default {
     },
     headerButtons() {
       return {
-        upload: this.user.perm.create,
-        download: this.user.perm.download,
-        shell: this.user.perm.execute && enableExec,
-        delete: this.selectedCount > 0 && this.user.perm.delete,
-        rename: this.selectedCount === 1 && this.user.perm.rename,
-        share: this.selectedCount === 1 && this.user.perm.share,
-        move: this.selectedCount > 0 && this.user.perm.rename,
         copy: this.selectedCount > 0 && this.user.perm.create,
       };
     },
@@ -415,15 +384,11 @@ export default {
     window.addEventListener("scroll", this.scrollEvent);
     window.addEventListener("resize", this.windowsResize);
 
-    if (!this.user.perm.create) return;
-    document.addEventListener("dragover", this.preventDefault);
-    document.addEventListener("dragenter", this.dragEnter);
-    document.addEventListener("dragleave", this.dragLeave);
-    document.addEventListener("drop", this.drop);
-    let params =
-      Object.fromEntries(new URLSearchParams(window.location.search)) || "";
-    sessionStorage.setItem("application", params?.type);
-    this.application = sessionStorage.getItem("application");
+    // title-文件管理器
+    let params = Object.fromEntries(
+      new URLSearchParams(window.location.search)
+    );
+    this.application = params.type;
   },
   beforeDestroy() {
     // Remove event listeners before destroying this page.
@@ -478,17 +443,17 @@ export default {
       let key = String.fromCharCode(event.which).toLowerCase();
 
       switch (key) {
-        case "f":
-          event.preventDefault();
-          this.$store.commit("showHover", "search");
-          break;
-        case "c":
-        case "x":
-          this.copyCut(event, key);
-          break;
-        case "v":
-          this.paste(event);
-          break;
+        // case "f":
+        //   event.preventDefault();
+        //   this.$store.commit("showHover", "search");
+        //   break;
+        // case "c":
+        // case "x":
+        //   this.copyCut(event, key);
+        //   break;
+        // case "v":
+        //   this.paste(event);
+        //   break;
         case "a":
           event.preventDefault();
           for (let file of this.items.files) {
@@ -502,109 +467,109 @@ export default {
             }
           }
           break;
-        case "s":
-          event.preventDefault();
-          document.getElementById("download-button").click();
-          break;
+        // case "s":
+        //   event.preventDefault();
+        //   document.getElementById("download-button").click();
+        //   break;
       }
     },
     preventDefault(event) {
       // Wrapper around prevent default.
       event.preventDefault();
     },
-    copyCut(event, key) {
-      if (event.target.tagName.toLowerCase() === "input") {
-        return;
-      }
+    // copyCut(event, key) {
+    //   if (event.target.tagName.toLowerCase() === "input") {
+    //     return;
+    //   }
 
-      let items = [];
+    //   let items = [];
 
-      for (let i of this.selected) {
-        items.push({
-          from: this.req.items[i].url,
-          name: this.req.items[i].name,
-        });
-      }
+    //   for (let i of this.selected) {
+    //     items.push({
+    //       from: this.req.items[i].url,
+    //       name: this.req.items[i].name,
+    //     });
+    //   }
 
-      if (items.length == 0) {
-        return;
-      }
+    //   if (items.length == 0) {
+    //     return;
+    //   }
 
-      this.$store.commit("updateClipboard", {
-        key: key,
-        items: items,
-        path: this.$route.path,
-      });
-    },
-    paste(event) {
-      if (event.target.tagName.toLowerCase() === "input") {
-        return;
-      }
+    //   this.$store.commit("updateClipboard", {
+    //     key: key,
+    //     items: items,
+    //     path: this.$route.path,
+    //   });
+    // },
+    // paste(event) {
+    //   if (event.target.tagName.toLowerCase() === "input") {
+    //     return;
+    //   }
 
-      let items = [];
+    //   let items = [];
 
-      for (let item of this.$store.state.clipboard.items) {
-        const from = item.from.endsWith("/")
-          ? item.from.slice(0, -1)
-          : item.from;
-        const to = this.$route.path + encodeURIComponent(item.name);
-        items.push({ from, to, name: item.name });
-      }
+    //   for (let item of this.$store.state.clipboard.items) {
+    //     const from = item.from.endsWith("/")
+    //       ? item.from.slice(0, -1)
+    //       : item.from;
+    //     const to = this.$route.path + encodeURIComponent(item.name);
+    //     items.push({ from, to, name: item.name });
+    //   }
 
-      if (items.length === 0) {
-        return;
-      }
+    //   if (items.length === 0) {
+    //     return;
+    //   }
 
-      let action = (overwrite, rename) => {
-        api
-          .copy(items, overwrite, rename)
-          .then(() => {
-            this.$store.commit("setReload", true);
-          })
-          .catch(this.$showError);
-      };
+    //   let action = (overwrite, rename) => {
+    //     api
+    //       .copy(items, overwrite, rename)
+    //       .then(() => {
+    //         this.$store.commit("setReload", true);
+    //       })
+    //       .catch(this.$showError);
+    //   };
 
-      if (this.$store.state.clipboard.key === "x") {
-        action = (overwrite, rename) => {
-          api
-            .move(items, overwrite, rename)
-            .then(() => {
-              this.$store.commit("resetClipboard");
-              this.$store.commit("setReload", true);
-            })
-            .catch(this.$showError);
-        };
-      }
+    //   if (this.$store.state.clipboard.key === "x") {
+    //     action = (overwrite, rename) => {
+    //       api
+    //         .move(items, overwrite, rename)
+    //         .then(() => {
+    //           this.$store.commit("resetClipboard");
+    //           this.$store.commit("setReload", true);
+    //         })
+    //         .catch(this.$showError);
+    //     };
+    //   }
 
-      if (this.$store.state.clipboard.path == this.$route.path) {
-        action(false, true);
+    //   if (this.$store.state.clipboard.path == this.$route.path) {
+    //     action(false, true);
 
-        return;
-      }
+    //     return;
+    //   }
 
-      let conflict = upload.checkConflict(items, this.req.items);
+    //   let conflict = upload.checkConflict(items, this.req.items);
 
-      let overwrite = false;
-      let rename = false;
+    //   let overwrite = false;
+    //   let rename = false;
 
-      if (conflict) {
-        this.$store.commit("showHover", {
-          prompt: "replace-rename",
-          confirm: (event, option) => {
-            overwrite = option == "overwrite";
-            rename = option == "rename";
+    //   if (conflict) {
+    //     this.$store.commit("showHover", {
+    //       prompt: "replace-rename",
+    //       confirm: (event, option) => {
+    //         overwrite = option == "overwrite";
+    //         rename = option == "rename";
 
-            event.preventDefault();
-            this.$store.commit("closeHovers");
-            action(overwrite, rename);
-          },
-        });
+    //         event.preventDefault();
+    //         this.$store.commit("closeHovers");
+    //         action(overwrite, rename);
+    //       },
+    //     });
 
-        return;
-      }
+    //     return;
+    //   }
 
-      action(overwrite, rename);
-    },
+    //   action(overwrite, rename);
+    // },
     colunmsResize() {
       // Update the columns size based on the window width.
       let items = css(["#listing.mosaic .item", ".mosaic#listing .item"]);
@@ -637,130 +602,130 @@ export default {
         this.showLimit += showQuantity;
       }
     }, 100),
-    dragEnter() {
-      this.dragCounter++;
+    // dragEnter() {
+    //   this.dragCounter++;
 
-      // When the user starts dragging an item, put every
-      // file on the listing with 50% opacity.
-      let items = document.getElementsByClassName("item");
+    //   // When the user starts dragging an item, put every
+    //   // file on the listing with 50% opacity.
+    //   let items = document.getElementsByClassName("item");
 
-      Array.from(items).forEach((file) => {
-        file.style.opacity = 0.5;
-      });
-    },
-    dragLeave() {
-      this.dragCounter--;
+    //   Array.from(items).forEach((file) => {
+    //     file.style.opacity = 0.5;
+    //   });
+    // },
+    // dragLeave() {
+    //   this.dragCounter--;
 
-      if (this.dragCounter == 0) {
-        this.resetOpacity();
-      }
-    },
-    drop: async function (event) {
-      event.preventDefault();
-      this.dragCounter = 0;
-      this.resetOpacity();
+    //   if (this.dragCounter == 0) {
+    //     this.resetOpacity();
+    //   }
+    // },
+    // drop: async function (event) {
+    //   event.preventDefault();
+    //   this.dragCounter = 0;
+    //   this.resetOpacity();
 
-      let dt = event.dataTransfer;
-      let el = event.target;
+    //   let dt = event.dataTransfer;
+    //   let el = event.target;
 
-      if (dt.files.length <= 0) return;
+    //   if (dt.files.length <= 0) return;
 
-      for (let i = 0; i < 5; i++) {
-        if (el !== null && !el.classList.contains("item")) {
-          el = el.parentElement;
-        }
-      }
+    //   for (let i = 0; i < 5; i++) {
+    //     if (el !== null && !el.classList.contains("item")) {
+    //       el = el.parentElement;
+    //     }
+    //   }
 
-      let files = await upload.scanFiles(dt);
-      let items = this.req.items;
-      let path = this.$route.path.endsWith("/")
-        ? this.$route.path
-        : this.$route.path + "/";
+    //   let files = await upload.scanFiles(dt);
+    //   let items = this.req.items;
+    //   let path = this.$route.path.endsWith("/")
+    //     ? this.$route.path
+    //     : this.$route.path + "/";
 
-      if (
-        el !== null &&
-        el.classList.contains("item") &&
-        el.dataset.dir === "true"
-      ) {
-        // Get url from ListingItem instance
-        path = el.__vue__.url;
+    //   if (
+    //     el !== null &&
+    //     el.classList.contains("item") &&
+    //     el.dataset.dir === "true"
+    //   ) {
+    //     // Get url from ListingItem instance
+    //     path = el.__vue__.url;
 
-        try {
-          items = (await api.fetch(path)).items;
-        } catch (error) {
-          this.$showError(error);
-        }
-      }
+    //     try {
+    //       items = (await api.fetch(path)).items;
+    //     } catch (error) {
+    //       this.$showError(error);
+    //     }
+    //   }
 
-      let conflict = upload.checkConflict(files, items);
+    //   let conflict = upload.checkConflict(files, items);
 
-      if (conflict) {
-        this.$store.commit("showHover", {
-          prompt: "replace",
-          action: (event) => {
-            event.preventDefault();
-            this.$store.commit("closeHovers");
-            upload.handleFiles(files, path, false);
-          },
-          confirm: (event) => {
-            event.preventDefault();
-            this.$store.commit("closeHovers");
-            upload.handleFiles(files, path, true);
-          },
-        });
+    //   if (conflict) {
+    //     this.$store.commit("showHover", {
+    //       prompt: "replace",
+    //       action: (event) => {
+    //         event.preventDefault();
+    //         this.$store.commit("closeHovers");
+    //         upload.handleFiles(files, path, false);
+    //       },
+    //       confirm: (event) => {
+    //         event.preventDefault();
+    //         this.$store.commit("closeHovers");
+    //         upload.handleFiles(files, path, true);
+    //       },
+    //     });
 
-        return;
-      }
+    //     return;
+    //   }
 
-      upload.handleFiles(files, path);
-    },
-    uploadInput(event) {
-      this.$store.commit("closeHovers");
+    //   upload.handleFiles(files, path);
+    // },
+    // uploadInput(event) {
+    //   this.$store.commit("closeHovers");
 
-      let files = event.currentTarget.files;
-      let folder_upload =
-        files[0].webkitRelativePath !== undefined &&
-        files[0].webkitRelativePath !== "";
+    //   let files = event.currentTarget.files;
+    //   let folder_upload =
+    //     files[0].webkitRelativePath !== undefined &&
+    //     files[0].webkitRelativePath !== "";
 
-      if (folder_upload) {
-        for (let i = 0; i < files.length; i++) {
-          let file = files[i];
-          files[i].fullPath = file.webkitRelativePath;
-        }
-      }
+    //   if (folder_upload) {
+    //     for (let i = 0; i < files.length; i++) {
+    //       let file = files[i];
+    //       files[i].fullPath = file.webkitRelativePath;
+    //     }
+    //   }
 
-      let path = this.$route.path.endsWith("/")
-        ? this.$route.path
-        : this.$route.path + "/";
-      let conflict = upload.checkConflict(files, this.req.items);
+    //   let path = this.$route.path.endsWith("/")
+    //     ? this.$route.path
+    //     : this.$route.path + "/";
+    //   let conflict = upload.checkConflict(files, this.req.items);
 
-      if (conflict) {
-        this.$store.commit("showHover", {
-          prompt: "replace",
-          action: (event) => {
-            event.preventDefault();
-            this.$store.commit("closeHovers");
-            upload.handleFiles(files, path, false);
-          },
-          confirm: (event) => {
-            event.preventDefault();
-            this.$store.commit("closeHovers");
-            upload.handleFiles(files, path, true);
-          },
-        });
+    //   if (conflict) {
+    //     this.$store.commit("showHover", {
+    //       prompt: "replace",
+    //       action: (event) => {
+    //         event.preventDefault();
+    //         this.$store.commit("closeHovers");
+    //         upload.handleFiles(files, path, false);
+    //       },
+    //       confirm: (event) => {
+    //         event.preventDefault();
+    //         this.$store.commit("closeHovers");
+    //         upload.handleFiles(files, path, true);
+    //       },
+    //     });
 
-        return;
-      }
+    //     return;
+    //   }
 
-      upload.handleFiles(files, path);
-    },
-    resetOpacity() {
-      let items = document.getElementsByClassName("item");
+    //   upload.handleFiles(files, path);
+    // },
+    // resetOpacity() {
+    //   let items = document.getElementsByClassName("item");
 
-      Array.from(items).forEach((file) => {
-        file.style.opacity = 1;
-      });
-    },
+    //   Array.from(items).forEach((file) => {
+    //     file.style.opacity = 1;
+    //   });
+    // },
     async sort(by) {
       let asc = false;
 
@@ -788,9 +753,9 @@ export default {
 
       this.$store.commit("setReload", true);
     },
-    openSearch() {
-      this.$store.commit("showHover", "search");
-    },
+    // openSearch() {
+    //   this.$store.commit("showHover", "search");
+    // },
     toggleMultipleSelection() {
       this.$store.commit("multiple", !this.multiple);
       this.$store.commit("closeHovers");
@@ -808,31 +773,6 @@ export default {
       // Fill but not fit the window
       this.fillWindow();
     }, 100),
-    download() {
-      if (this.selectedCount === 1 && !this.req.items[this.selected[0]].isDir) {
-        api.download(null, this.req.items[this.selected[0]].url);
-        return;
-      }
-
-      this.$store.commit("showHover", {
-        prompt: "download",
-        confirm: (format) => {
-          this.$store.commit("closeHovers");
-
-          let files = [];
-
-          if (this.selectedCount > 0) {
-            for (let i of this.selected) {
-              files.push(this.req.items[i].url);
-            }
-          } else {
-            files.push(this.$route.path);
-          }
-
-          api.download(format, ...files);
-        },
-      });
-    },
     switchView: async function () {
       this.$store.commit("closeHovers");
 
@@ -855,16 +795,16 @@ export default {
       this.setItemWeight();
       this.fillWindow();
     },
-    upload: function () {
-      if (
-        typeof window.DataTransferItem !== "undefined" &&
-        typeof DataTransferItem.prototype.webkitGetAsEntry !== "undefined"
-      ) {
-        this.$store.commit("showHover", "upload");
-      } else {
-        document.getElementById("upload-input").click();
-      }
-    },
+    // upload: function () {
+    //   if (
+    //     typeof window.DataTransferItem !== "undefined" &&
+    //     typeof DataTransferItem.prototype.webkitGetAsEntry !== "undefined"
+    //   ) {
+    //     this.$store.commit("showHover", "upload");
+    //   } else {
+    //     document.getElementById("upload-input").click();
+    //   }
+    // },
     setItemWeight() {
       // Listing element is not displayed
       if (this.$refs.listing == null) return;
@@ -893,6 +833,16 @@ export default {
 
       // Set the number of displayed items
       this.showLimit = showQuantity > totalItems ? totalItems : showQuantity;
+    },
+    async copyToFiles() {
+      // init state.req
+      try {
+        const res = await api.fetch("/");
+        this.$store.commit("updateReq", res);
+        this.$store.commit("showHover", "copy");
+      } catch (e) {
+        this.$showError(e);
+      }
     },
   },
 };
