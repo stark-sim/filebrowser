@@ -35,7 +35,16 @@ export default defineConfig(({ command }) => {
             target: "ws://127.0.0.1:8080",
             ws: true,
           },
-          "/api": "http://127.0.0.1:8080",
+          // "/api": "http://127.0.0.1:8080",
+          "^/api": {
+            target: "http://127.0.0.1:8080",
+            // target: "https://www.rosabi.cn",
+            // target: 'http://192.168.0.34:8040',//代
+            // target: "http://192.168.0.26:8080", //厚/
+            // rewrite: (path) => path.replace(/^\/api/, "/user-center/v1"),
+            // rewrite: (path) => path.replace(/^\/api/, "v1"),
+            // changeOrigin: true,
+          },
         },
       },
     };

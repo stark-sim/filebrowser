@@ -4,6 +4,7 @@ import Login from "@/views/Login.vue";
 import Layout from "@/views/Layout.vue";
 import Files from "@/views/Files.vue";
 import BaiduNetdisk from "@/views/BaiduNetdisk.vue";
+import CephalonCloud from '@/views/CephalonCloud.vue'
 import Share from "@/views/Share.vue";
 import Users from "@/views/settings/Users.vue";
 import User from "@/views/settings/User.vue";
@@ -74,6 +75,14 @@ const router = new Router({
           meta: {
             requiresAuth: true,
           },
+        },
+        {
+          path: "/cephalon-cloud",
+          name:'CephalonCloud',
+          component:CephalonCloud,
+          // redirect: {
+          //   path: "/cephalon-cloud/",
+          // },
         },
         {
           path: "/settings",

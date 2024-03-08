@@ -6,6 +6,7 @@ import * as pub from "./pub";
 import search from "./search";
 import commands from "./commands";
 import * as bdApi from "./baiduNetdisk";
+import * as cepApi from "./cephalonCloud";
 import * as test from "./test";
 
-export { files, share, users, settings, pub, commands, search, bdApi, test };
+export { files, share, users, settings, pub, commands, search, bdApi, cepApi,test };

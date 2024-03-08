@@ -11,7 +11,7 @@
         <span>{{ $t("sidebar.myFiles") }}</span>
       </button>
 
-      <div v-if="user.perm.create">
+      <div v-if="user.perm.create && this.$route.path != '/cephalon-cloud/'">
         <button
           @click="$store.commit('showHover', 'newDir')"
           class="action"
@@ -34,6 +34,15 @@
       </div>
 
       <div>
+        <button
+          @click="toCephalonCloud"
+          class="action"
+          :aria-label="$t('sidebar.cephalonCloud')"
+          :title="$t('sidebar.cephalonCloud')"
+        >
+          <i class="material-icons">cloud</i>
+          <span>{{ $t("sidebar.cephalonCloud") }}</span>
+        </button>
         <button
           @click="toBaiduNetdisk"
           class="action"
@@ -104,6 +113,22 @@
       {{ usage.used }} of {{ usage.total }} used
     </div>
 
+    <div
+      class="credits"
+      v-else-if="
+        $router.currentRoute.path.includes('/cephalon-cloud/') &&
+        !disableUsedPercentage
+      "
+      style="width: 90%; margin: 2em 2.5em 3em 2.5em"
+    >
+      <progress-bar
+        :val="usage.cloudUsedPercentage"
+        size="small"
+      ></progress-bar>
+      <br />
+      {{ usage.cloudUsed }} of {{ usage.cloudTotal }} used
+    </div>
+
     <p class="credits">
       <span>
         <span v-if="disableExternal">File Browser</span>
@@ -134,7 +159,7 @@ import {
   noAuth,
   loginPage,
 } from "@/utils/constants";
-import { files as api } from "@/api";
+import { files as api, cepApi } from "@/api";
 import ProgressBar from "vue-simple-progress";
 import prettyBytes from "pretty-bytes";
 
@@ -145,6 +170,7 @@ export default {
   },
   computed: {
     ...mapState(["user"]),
+    ...mapState("cep", ["rep"]),
     ...mapGetters(["isLogged", "currentPrompt"]),
     active() {
       return this.currentPrompt?.prompt === "sidebar";
@@ -161,25 +187,52 @@ export default {
         let path = this.$route.path.endsWith("/")
           ? this.$route.path
           : this.$route.path + "/";
-        let usageStats = { used: 0, total: 0, usedPercentage: 0 };
+        let usageStats = {
+          used: 0,
+          total: 0,
+          usedPercentage: 0,
+          cloudUsed: 0,
+          cloudTotal: 0,
+          cloudUsedPercentage: 0,
+        };
         if (this.disableUsedPercentage) {
           return usageStats;
         }
         try {
           let usage = await api.usage(path);
+          let usageCloud = await cepApi.usage();
           usageStats = {
             used: prettyBytes(usage.used, { binary: true }),
             total: prettyBytes(usage.total, { binary: true }),
             usedPercentage: Math.round((usage.used / usage.total) * 100),
+            cloudUsed: prettyBytes(usageCloud.data.used_space, {
+              binary: true,
+            }),
+            cloudTotal: prettyBytes(usageCloud.data.user_space, {
+              binary: true,
+            }),
+            cloudUsedPercentage: Math.round(
+              (usageCloud.data.used_space / usageCloud.data.user_space) * 100
+            ),
           };
         } catch (error) {
           this.$showError(error);
         }
         return usageStats;
       },
-      default: { used: "0 B", total: "0 B", usedPercentage: 0 },
+      default: {
+        used: "0 B",
+        total: "0 B",
+        usedPercentage: 0,
+        cloudUsed: 0,
+        cloudTotal: 0,
+        cloudUsedPercentage: 0,
+      },
       shouldUpdate() {
-        return this.$router.currentRoute.path.includes("/files/");
+        return (
+          this.$router.currentRoute.path.includes("/files/") ||
+          this.$router.currentRoute.path.includes("/cephalon-cloud/")
+        );
       },
     },
   },
@@ -198,6 +251,10 @@ export default {
     logout: auth.logout,
     toBaiduNetdisk() {
       this.$router.push({ path: "/baidu-netdisk/" }, () => {});
+      this.$store.commit("closeHovers");
+    },
+    toCephalonCloud() {
+      this.$router.push({ path: "/cephalon-cloud/" }, () => {});
       this.$store.commit("closeHovers");
     },
   },
