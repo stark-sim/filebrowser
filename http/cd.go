@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-const DirInfoURL = "https://"
+const DirInfoURL = "https://www.rosabi.cn/user-center/v1/cloud-files"
 
 type downloadInput struct {
 	MD5      string `json:"md5"`
@@ -78,7 +78,7 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	return http.StatusCreated, nil
 }
 
-/*var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
+var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
 	// 向user_center请求用户信息
 	request, err := http.NewRequest("GET", DirInfoURL, nil)
 	if err != nil {
@@ -87,6 +87,8 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	}
 	query := request.URL.Query()
 	query.Add("user_id", os.Getenv("USER_ID"))
+	request.URL.RawQuery = query.Encode()
+
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		fmt.Printf("http.DefaultClient.Do err")
@@ -100,4 +102,30 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 		return http.StatusInternalServerError, err
 	}
 	return 0, nil
-}*/
+}
+
+var cephalonUserSpace = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
+	// 向user_center请求用户信息
+	request, err := http.NewRequest("GET", DirInfoURL+"/user-space", nil)
+	if err != nil {
+		fmt.Printf("http.NewRequest err %v", err)
+		return 0, err
+	}
+	query := request.URL.Query()
+	query.Add("user_id", os.Getenv("USER_ID"))
+	request.URL.RawQuery = query.Encode()
+
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		fmt.Printf("http.DefaultClient.Do err")
+		return http.StatusInternalServerError, err
+	}
+	defer resp.Body.Close()
+	// 读取返回的数据
+	body, err := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, err := w.Write(body); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return 0, nil
+}
