@@ -100,5 +100,7 @@ func NewHandler(
 	// 端脑云存储相关接口
 	cephalonDisk := api.PathPrefix("/cd").Subrouter()
 	cephalonDisk.PathPrefix("/download").Handler(monkey(cephalonDiskDownload, "/api/cd/download")).Methods("POST")
+	cephalonDisk.PathPrefix("/dir").Handler(monkey(cephalonDirInfo, "/api/cd/dir")).Methods("GET")
+	cephalonDisk.PathPrefix("/user-space").Handler(monkey(cephalonUserSpace, "/api/cd/user-space")).Methods("GET")
 	return stripPrefix(server.BaseURL, r), nil
 }
