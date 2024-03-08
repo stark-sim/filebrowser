@@ -15,18 +15,6 @@
 
       <template #actions>
         <template v-if="!isMobile">
-          <!-- <action
-            v-if="headerButtons.share"
-            icon="share"
-            :label="$t('buttons.share')"
-            show="share"
-          />
-          <action
-            v-if="headerButtons.rename"
-            icon="mode_edit"
-            :label="$t('buttons.rename')"
-            show="rename"
-          /> -->
           <action
             v-if="headerButtons.copy"
             id="copy-button"
@@ -35,28 +23,8 @@
             :counter="selectedCount"
             @action="copyToFiles"
           />
-          <!-- <action
-            v-if="headerButtons.move"
-            id="move-button"
-            icon="forward"
-            :label="$t('buttons.moveFile')"
-            show="move"
-          />
-          <action
-            v-if="headerButtons.delete"
-            id="delete-button"
-            icon="delete"
-            :label="$t('buttons.delete')"
-            show="delete"
-          /> -->
         </template>
 
-        <!-- <action
-          v-if="headerButtons.shell"
-          icon="code"
-          :label="$t('buttons.shell')"
-          @action="$store.commit('toggleShell')"
-        /> -->
         <action
           :icon="viewIcon"
           :label="$t('buttons.switchView')"
@@ -111,7 +79,7 @@
           <i class="material-icons">sentiment_dissatisfied</i>
           <span>{{ $t("files.lonely") }}</span>
         </h2>
-        <input
+        <!-- <input
           style="display: none"
           type="file"
           id="upload-input"
@@ -125,7 +93,7 @@
           @change="uploadInput($event)"
           webkitdirectory
           multiple
-        />
+        /> -->
       </div>
       <div
         v-else
@@ -212,7 +180,7 @@
           </item>
         </div>
 
-        <input
+        <!-- <input
           style="display: none"
           type="file"
           id="upload-input"
@@ -226,7 +194,7 @@
           @change="uploadInput($event)"
           webkitdirectory
           multiple
-        />
+        /> -->
 
         <div :class="{ active: $store.state.multiple }" id="multiple-selection">
           <p>{{ $t("files.multipleSelectionEnabled") }}</p>

@@ -49,7 +49,8 @@
     "forbidden": "你无权限访问",
     "internal": "服务器出了点问题。",
     "notFound": "找不到文件。",
-    "connection": "无法连接到服务器。"
+    "connection": "无法连接到服务器。",
+    "retry": "网络拥堵，请稍后再试。"
   },
   "files": {
     "body": "内容",

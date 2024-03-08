@@ -27,7 +27,7 @@ import HeaderBar from "@/components/header/HeaderBar.vue";
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import Errors from "@/views/Errors.vue";
 import Listing from "@/views/cephalonCloud/Listing.vue";
-
+// import CopyFiles from "@/views/cephalonCloud/CopyFiles.vue";
 function clean(path) {
   return path.endsWith("/") ? path.slice(0, -1) : path;
 }
@@ -38,7 +38,7 @@ export default {
     HeaderBar,
     Breadcrumbs,
     Errors,
-
+    // CopyFiles,
     Listing,
   },
   data: function () {
@@ -109,21 +109,6 @@ export default {
 
       try {
         await cepApi.fetchDir(url);
-
-        // console.log(
-        //   "run",
-        //   clean(res.path) !== clean(`/${this.$route.params.pathMatch}`),
-        //   clean(res.path),
-        //   clean(`/${this.$route.params.pathMatch}`)
-        // );
-
-        // if (clean(res.path) !== clean(`/${this.$route.params.pathMatch}`)) {
-        //   return;
-        // }
-
-        // this.$store.commit("updateRequest", res);
-        // console.log(res, "???????/");
-        // document.title = `${res.name} - ${document.title}`;
       } catch (e) {
         this.error = e;
       } finally {
@@ -137,6 +122,7 @@ export default {
         this.$store.commit("showHover", "help");
       }
     },
+
     // fetchProgress: async function () {
     //   // Reset view information.
     //   this.$store.commit("bd/setRefreshCopy", false);

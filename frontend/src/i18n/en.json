@@ -53,7 +53,8 @@
     "forbidden": "You don't have permissions to access this.",
     "internal": "Something really went wrong.",
     "notFound": "This location can't be reached.",
-    "connection": "The server can't be reached."
+    "connection": "The server can't be reached.",
+    "retry": "Network congestion, please try again later."
   },
   "files": {
     "body": "Body",
