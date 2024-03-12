@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-const DirInfoURL = "https://cephalon.cloud/user-center/v1/cloud-files"
+var DirInfoURL = os.Getenv("USER_CENTER_HOST") + "/v1/cloud-files"
 
 type downloadInput struct {
 	MD5      string `json:"md5"`
