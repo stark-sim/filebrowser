@@ -108,11 +108,15 @@ export default {
         // }, 1000);
       } catch (e) {
         if (e.status === 302)
-          this.$showError({ message: this.$t("errors.retry") });
+          this.$showError({ message: this.$t("errors.retry") }, false, 1500);
         else if (e.status === 403)
-          this.$showError({ message: this.$t("errors.forbidden") });
+          this.$showError(
+            { message: this.$t("errors.forbidden") },
+            false,
+            1500
+          );
         else if (e.status === 500)
-          this.$showError({ message: this.$t("errors.internal") });
+          this.$showError({ message: this.$t("errors.internal") }, false, 1500);
         else this.$showError(e);
 
         buttons.done("copy");
