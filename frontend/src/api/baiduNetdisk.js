@@ -46,7 +46,8 @@ async function fetchUtil(
     error.status = res.status;
 
     if (res.status === 401) {
-      atExpired && Vue.prototype.$showError({ message: i18n.t(atExpired) });
+      atExpired &&
+        Vue.prototype.$showError({ message: i18n.t(atExpired) }, false);
       setAt && logout();
     }
 
