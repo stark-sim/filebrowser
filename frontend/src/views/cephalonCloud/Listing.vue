@@ -1,9 +1,6 @@
 <template>
   <div>
     <header-bar showMenu showLogo>
-      <span v-if="application?.length > 1" class="title"
-        >「{{ application }}」 文件管理器</span
-      >
       <!-- <search /> -->
       <title />
       <action
@@ -74,7 +71,7 @@
       </h2>
     </div>
     <template v-else>
-      <div v-if="req.numDirs + req.numFiles == 0">
+      <div v-if="!req.numFiles || req.numDirs + req.numFiles == 0">
         <h2 class="message">
           <i class="material-icons">sentiment_dissatisfied</i>
           <span>{{ $t("files.lonely") }}</span>
@@ -241,11 +238,10 @@ export default {
       // dragCounter: 0,
       width: window.innerWidth,
       itemWeight: 0,
-      application: "",
     };
   },
   computed: {
-    ...mapState("cep", ["req", "loading"]),
+    ...mapState("cep", ["req"]),
     ...mapState(["selected", "user", "multiple", "loading"]),
     ...mapGetters(["selectedCount", "currentPrompt"]),
     nameSorted() {
@@ -351,12 +347,6 @@ export default {
     window.addEventListener("keydown", this.keyEvent);
     window.addEventListener("scroll", this.scrollEvent);
     window.addEventListener("resize", this.windowsResize);
-
-    // title-文件管理器
-    let params = Object.fromEntries(
-      new URLSearchParams(window.location.search)
-    );
-    this.application = params.type;
   },
   beforeDestroy() {
     // Remove event listeners before destroying this page.

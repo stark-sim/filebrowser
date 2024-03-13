@@ -1,9 +1,6 @@
 <template>
   <div>
     <header-bar showMenu showLogo>
-      <span v-if="application != 'undefined'" class="title"
-        >「{{ application }}」 文件管理器</span
-      >
       <search />
       <title />
       <action
@@ -298,7 +295,6 @@ export default {
       dragCounter: 0,
       width: window.innerWidth,
       itemWeight: 0,
-      application: "",
     };
   },
   computed: {
@@ -420,10 +416,6 @@ export default {
     document.addEventListener("dragenter", this.dragEnter);
     document.addEventListener("dragleave", this.dragLeave);
     document.addEventListener("drop", this.drop);
-    let params =
-      Object.fromEntries(new URLSearchParams(window.location.search)) || "";
-    sessionStorage.setItem("application", params?.type);
-    this.application = sessionStorage.getItem("application");
   },
   beforeDestroy() {
     // Remove event listeners before destroying this page.

@@ -2,7 +2,7 @@ import Vue from "vue";
 import store from "@/store";
 import router from "@/router";
 import { baseURL } from "@/utils/constants";
-import { removePrefix } from "@/api/utils";
+import { fetchURL, removePrefix } from "@/api/utils";
 import i18n from "@/i18n";
 
 /* util  */
@@ -14,7 +14,7 @@ async function fetchUtil(
 ) {
   opts = opts || {};
   opts.headers = opts.headers || {};
-  opts.body = opts.body || {};
+  opts.body = opts.method === "GET" ? undefined : opts.body || {};
 
   let { headers, body, ...rest } = opts;
   if (setAt && body instanceof Object) {
@@ -34,10 +34,10 @@ async function fetchUtil(
       body,
       ...rest,
     });
-  } catch {
+  } catch (e) {
     const error = new Error("000 No connection");
     error.status = 0;
-
+    console.log(e);
     throw error;
   }
 
@@ -46,13 +46,12 @@ async function fetchUtil(
     error.status = res.status;
 
     if (res.status === 401) {
-      atExpired && Vue.prototype.$showError(i18n.t(atExpired), false, 1500);
+      atExpired && Vue.prototype.$showError({ message: i18n.t(atExpired) });
       setAt && logout();
     }
 
     throw error;
   }
-
   if (res.status === 200) {
     return res.json();
   } else {
@@ -63,13 +62,13 @@ async function fetchUtil(
 /* api */
 export function saveToken(at) {
   store.commit("bd/setAt", at);
-  localStorage.setItem("bdAt", at);
+  sessionStorage.setItem("bdAt", at);
 }
 
 export function getToken() {
   const { at } = store.state.bd;
   if (at) return at;
-  const bdAt = localStorage.getItem("bdAt");
+  const bdAt = sessionStorage.getItem("bdAt");
   if (bdAt && bdAt !== "null") {
     store.commit("bd/setAt", bdAt);
     return bdAt;
@@ -88,6 +87,8 @@ export async function login(code) {
   );
   if (access_token) {
     saveToken(access_token);
+    //切换用户
+    store.commit("bd/setChange", true);
   }
 }
 
@@ -95,7 +96,7 @@ export function logout() {
   store.commit("bd/setAt", "");
   store.commit("bd/setUser", "");
   store.commit("bd/updateReq", {});
-  localStorage.setItem("bdAt", null);
+  sessionStorage.setItem("bdAt", null);
 
   if (router.currentRoute.path !== "/baidu-netdisk/") {
     router.push({ path: "/baidu-netdisk" });
@@ -238,4 +239,19 @@ export function fetchProgress() {
   return fetchUtil("/api/bd/progress", {
     method: "POST",
   });
+}
+
+export async function getAccessToken() {
+  if (sessionStorage.getItem("bdAt")) {
+    return;
+  }
+  const res = await fetchUtil(
+    "/api/bd/access-token",
+    {
+      method: "GET",
+    },
+    false
+  );
+  const { access_token } = res.data;
+  if (access_token) saveToken(access_token);
 }

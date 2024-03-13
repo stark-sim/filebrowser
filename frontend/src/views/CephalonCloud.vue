@@ -51,11 +51,11 @@ export default {
   },
   computed: {
     ...mapState(["loading", "reload"]),
-    ...mapState("cep", ["req", "reload", "loading"]),
+    ...mapState("cep", ["req"]),
     currentView() {
       if (this.loading) {
         return null;
-      } else if (this.req.isDir) {
+      } else if (this.req) {
         return "listing";
       }
     },

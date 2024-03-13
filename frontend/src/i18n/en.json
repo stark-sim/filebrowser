@@ -296,6 +296,6 @@
     "superMember": "Super Member",
     "unbind": "unbind",
     "bindFail": "Binding failed!",
-    "authExpired": "Authorization expired!"
+    "authExpired": "The authorization code has expired. You can rebind Baidu Cloud Disk to the current application on this page. If you need to bind Baidu Netdisk to Duannao account, please go to Duannao Cloud 'Cloud Disk Management' - 'Baidu Netdisk' and refresh the page to obtain a new authorization code."
   }
 }

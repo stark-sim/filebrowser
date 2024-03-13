@@ -1,6 +1,9 @@
 <template>
   <header>
     <img v-if="showLogo !== undefined" :src="logoURL" />
+    <span v-if="!isMobile && application?.length > 1" class="title"
+      >「{{ application }}」 文件管理器</span
+    >
     <action
       v-if="showMenu !== undefined"
       class="menu-button"
@@ -46,6 +49,7 @@ export default {
   data: function () {
     return {
       logoURL,
+      application: "",
     };
   },
   methods: {
@@ -55,6 +59,22 @@ export default {
   },
   computed: {
     ...mapGetters(["currentPromptName"]),
+    isMobile() {
+      return this.width <= 736;
+    },
+  },
+  mounted() {
+    if (!sessionStorage.getItem("application")) {
+      let params =
+        Object.fromEntries(new URLSearchParams(window.location.search)) || "";
+      console.log("???", params?.type);
+      if (!params?.type) return;
+      sessionStorage.setItem("application", params?.type);
+
+      this.application = params?.type;
+    } else {
+      this.application = sessionStorage.getItem("application");
+    }
   },
 };
 </script>

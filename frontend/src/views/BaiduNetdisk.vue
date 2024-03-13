@@ -125,11 +125,13 @@ export default {
     try {
       this.setLoading(true);
       this.$store.commit("setHandlingType", "BaiduNetdisk");
+      await bdApi.getAccessToken();
       const at = bdApi.getToken();
       if (at) {
         await bdApi.fetchUserInfo();
       }
-    } catch {
+    } catch (e) {
+      console.log(e);
     } finally {
       this.setLoading(false);
     }
