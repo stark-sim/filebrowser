@@ -3,10 +3,12 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/filebrowser/filebrowser/v2/bd"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"os"
 )
 
 var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
@@ -116,4 +118,56 @@ var bdDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *data) (
 		return 0, err
 	}
 	return renderJSON(w, r, percentage)
+}
+
+var bdRefreshAccessToken = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	// 向user_center请求刷新用户百度token
+	request, err := http.NewRequest("PUT", os.Getenv("USER_CENTER_HOST")+"/v1/cloud-files/baidu-access-token/refresh", nil)
+	if err != nil {
+		fmt.Printf("http.NewRequest err %v", err)
+		return 0, err
+	}
+	query := request.URL.Query()
+	query.Add("user_id", os.Getenv("USER_ID"))
+	request.URL.RawQuery = query.Encode()
+
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		fmt.Printf("http.DefaultClient.Do err")
+		return http.StatusInternalServerError, err
+	}
+	defer resp.Body.Close()
+	// 读取返回的数据
+	body, err := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, err := w.Write(body); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return 0, nil
+}
+
+var bdGetAccessToken = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	// 向user_center请求用户信息
+	request, err := http.NewRequest("GET", os.Getenv("USER_CENTER_HOST")+"/v1/cloud-files/baidu-access-token", nil)
+	if err != nil {
+		fmt.Printf("http.NewRequest err")
+		return 0, err
+	}
+	query := request.URL.Query()
+	query.Add("user_id", os.Getenv("USER_ID"))
+	request.URL.RawQuery = query.Encode()
+
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		fmt.Printf("http.DefaultClient.Do err")
+		return http.StatusInternalServerError, err
+	}
+	defer resp.Body.Close()
+	// 读取返回的数据
+	body, err := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, err := w.Write(body); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return 0, nil
 }
