@@ -109,6 +109,12 @@ export default {
       } catch (e) {
         if (e.status === 302)
           this.$showError({ message: this.$t("errors.retry") });
+        else if (e.status === 403)
+          this.$showError({ message: this.$t("errors.forbidden") });
+        else if (e.status === 500)
+          this.$showError({ message: this.$t("errors.internal") });
+        else this.$showError(e);
+
         buttons.done("copy");
         console.log("cep download error:", e);
       } finally {
