@@ -22,7 +22,7 @@ async function fetchUtil(
   body = typeof body === "string" ? body : JSON.stringify(body);
   let res;
   try {
-    res = await fetchURL(`${baseURL}${url}`, {
+    res = await fetch(`${baseURL}${url}`, {
       headers: {
         "Content-Type": "application/json",
         ...headers,
