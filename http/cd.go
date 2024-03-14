@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var DirInfoURL = os.Getenv("USER_CENTER_HOST") + "/v1/cloud-files"
@@ -50,20 +51,31 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 		return http.StatusNotFound, nil
 	}
 
-	//文件正在向master节点爬取,请稍后尝试
+	//文件正在向master节点爬取,轮询什么时候爬取完成
 	if myelinResponse.StatusCode == 302 {
-		return http.StatusFound, nil
+		for {
+			myelinResponse, err = http.DefaultClient.Do(req)
+			if err != nil {
+				fmt.Println("myelin do err")
+				return http.StatusInternalServerError, err
+			}
+			if myelinResponse.StatusCode == 200 {
+				break
+			}
+			//睡眠1s
+			time.Sleep(time.Second)
+		}
 	}
 
 	//确认目标文件夹存在
-	if err := os.MkdirAll(input.Target, os.ModePerm); err != nil {
+	fullPath := filepath.Join(d.server.Root, input.Target)
+	if err := os.MkdirAll(fullPath, os.ModePerm); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
 	// 创建目标文件
-	filePath := filepath.Join(input.Target, input.Filename)
-	fullPath := filepath.Join(d.server.Root, filePath)
-	newFile, err := os.Create(fullPath)
+	filePath := filepath.Join(fullPath, input.Filename)
+	newFile, err := os.Create(filePath)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
