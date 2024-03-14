@@ -40,7 +40,7 @@
           :aria-label="$t('sidebar.cephalonCloud')"
           :title="$t('sidebar.cephalonCloud')"
         >
-          <i class="material-icons">cloud</i>
+          <img class="icon" src="@/assets/img/cep-cloud-icon.png" />
           <span>{{ $t("sidebar.cephalonCloud") }}</span>
         </button>
         <button

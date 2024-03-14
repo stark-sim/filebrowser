@@ -62,7 +62,8 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 
 	// 创建目标文件
 	filePath := filepath.Join(input.Target, input.Filename)
-	newFile, err := os.Create(filePath)
+	fullPath := filepath.Join(d.server.Root, filePath)
+	newFile, err := os.Create(fullPath)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
