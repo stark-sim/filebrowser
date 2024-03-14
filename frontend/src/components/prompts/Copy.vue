@@ -98,6 +98,7 @@ export default {
             filename: name,
           });
         }
+        this.$store.commit("closeHovers");
         for (let item of items) {
           await cepApi.fetchDownload(item);
         }
