@@ -100,14 +100,11 @@ export default {
         }
 
         const loadList = [];
-        console.log(loadList, "load");
-        console.log(this.cep.req, this.selected);
 
         for (let item of this.selected) {
           const { size, name } = this.cep.req.items[item];
           let temp = { size, name, process: 0, canStop: false };
           loadList.push(temp);
-          console.log(temp);
         }
         store.commit("cep/setList", loadList);
         this.$store.commit("closeHovers");
@@ -122,7 +119,6 @@ export default {
                   100
                 ).toFixed(2)
               );
-              console.log(thistime);
               if (this.cep.list[index].process + thistime < 100) {
                 store.commit("cep/setListProgressAdd1", {
                   index,

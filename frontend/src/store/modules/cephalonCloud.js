@@ -14,11 +14,9 @@ const mutations = {
   updateReq: (state, value) => (state.req = value),
   setRefreshCopy: (state, value) => (state.refreshCopy = value),
   setListProgressAdd1: (state, value) => {
-    console.log(value);
     state.list[value.index].process = value.value;
   },
   setListCanStop: (state, value) => {
-    console.log(value);
     state.list[value.index].canStop = value.value;
   },
   setList: (state, value) => (state.list = value),
