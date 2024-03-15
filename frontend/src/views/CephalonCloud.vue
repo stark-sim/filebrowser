@@ -16,7 +16,8 @@
         <span>{{ $t("files.loading") }}</span>
       </h2>
     </div>
-    <!-- <copy-files :list="currentProgresses" :speed="speedMbyte" :eta="eta" /> -->
+
+    <copy-files :list="list" :progress="progress" />
   </div>
 </template>
 
@@ -27,7 +28,7 @@ import HeaderBar from "@/components/header/HeaderBar.vue";
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import Errors from "@/views/Errors.vue";
 import Listing from "@/views/cephalonCloud/Listing.vue";
-// import CopyFiles from "@/views/cephalonCloud/CopyFiles.vue";
+import CopyFiles from "@/views/cephalonCloud/CopyFiles.vue";
 function clean(path) {
   return path.endsWith("/") ? path.slice(0, -1) : path;
 }
@@ -38,7 +39,7 @@ export default {
     HeaderBar,
     Breadcrumbs,
     Errors,
-    // CopyFiles,
+    CopyFiles,
     Listing,
   },
   data: function () {
@@ -51,7 +52,7 @@ export default {
   },
   computed: {
     ...mapState(["loading", "reload"]),
-    ...mapState("cep", ["req"]),
+    ...mapState("cep", ["req", "progress", "list"]),
     currentView() {
       if (this.loading) {
         return null;
@@ -60,10 +61,10 @@ export default {
       }
     },
     currentProgresses() {
-      return Object.keys(this.progresses).map((name) => ({
-        name,
-        progress: this.progresses[name].progress,
-      }));
+      // return Object.keys(this.progresses).map((name) => ({
+      //   name,
+      //   progress: this.progresses[name].progress,
+      // }));
     },
   },
   created() {

@@ -58,7 +58,7 @@ import { files as api, bdApi, cepApi } from "@/api";
 import buttons from "@/utils/buttons";
 import * as upload from "@/utils/upload";
 import { removePrefix } from "@/api/utils";
-
+import store from "@/store";
 export default {
   name: "copy",
   components: { FileList },
@@ -98,19 +98,69 @@ export default {
             filename: name,
           });
         }
+
+        const loadList = [];
+        console.log(loadList, "load");
+        console.log(this.cep.req, this.selected);
+
+        for (let item of this.selected) {
+          const { size, name } = this.cep.req.items[item];
+          let temp = { size, name, process: 0, canStop: false };
+          loadList.push(temp);
+          console.log(temp);
+        }
+        store.commit("cep/setList", loadList);
         this.$store.commit("closeHovers");
+        store.commit("cep/setCanStop", true);
+        for (let index = 0; index < items.length; index++) {
+          let timer = setInterval(() => {
+            if (!this.cep.list[index].canStop) {
+              let thistime = parseFloat(
+                (
+                  (((Math.random() * 5 + 5) * 1024 * 1024) /
+                    this.cep.list[index].size) *
+                  100
+                ).toFixed(2)
+              );
+              console.log(thistime);
+              if (this.cep.list[index].process + thistime < 100) {
+                store.commit("cep/setListProgressAdd1", {
+                  index,
+                  value: this.cep.list[index].process + thistime,
+                });
+              } else {
+              }
+
+              if (this.cep.list[index].process > 90)
+                // store.commit("cep/setListCanStop", { index, value: false });
+                store.commit("cep/setListCanStop", { index, value: true });
+            } else clearInterval(timer);
+          }, 100);
+        }
         for (let item of items) {
           await cepApi.fetchDownload(item);
         }
+        for (let index = 0; index < items.length; index++) {
+          store.commit("cep/setListProgressAdd1", { index, value: 100 });
+        }
+        // store.commit("cep/setProgressAdd1", 100);
+        store.commit("cep/setCanStop", false);
+        setTimeout(() => {
+          for (let index = 0; index < items.length; index++)
+            store.commit("cep/setListProgressAdd1", { index, value: 0 });
+        }, 500);
+
         this.$showSuccess(this.$t("success.filesCopied"));
+
         // 由于调下载接口再查询 progress 有延迟
         // window.setTimeout(() => {
         //   this.$store.commit("bd/setRefreshCopy", true);
         // }, 1000);
       } catch (e) {
-        if (e.status === 302)
-          this.$showError({ message: this.$t("errors.retry") }, false, 1500);
-        else if (e.status === 403)
+        // if (e.status === 302)
+        //   this.$showError({ message: this.$t("errors.retry") }, false, 1500);
+        // else
+        if (e.status === 403)
           this.$showError(
             { message: this.$t("errors.forbidden") },
             false,

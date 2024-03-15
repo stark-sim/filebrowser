@@ -99,7 +99,6 @@ const actions = {
           100,
           { leading: true, trailing: false }
         );
-        console.log(item, "123123");
         return;
         await api
           .post(item.path, item.file, item.overwrite, onUpload)

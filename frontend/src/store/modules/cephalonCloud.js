@@ -3,6 +3,9 @@ const state = {
   user: null,
   req: {},
   refreshCopy: false,
+
+  list: [],
+  canStop: false,
 };
 
 const mutations = {
@@ -10,6 +13,16 @@ const mutations = {
   setUser: (state, value) => (state.user = value),
   updateReq: (state, value) => (state.req = value),
   setRefreshCopy: (state, value) => (state.refreshCopy = value),
+  setListProgressAdd1: (state, value) => {
+    console.log(value);
+    state.list[value.index].process = value.value;
+  },
+  setListCanStop: (state, value) => {
+    console.log(value);
+    state.list[value.index].canStop = value.value;
+  },
+  setList: (state, value) => (state.list = value),
+  setCanStop: (state, value) => (state.canStop = value),
 };
 
 const actions = {};
@@ -19,16 +32,16 @@ const getters = {
   isFiles: (state) => !state.loading && state.route.name === "Files",
   isListing: (state, getters) => getters.isFiles && state.req.isDir,
   selectedCount: (state) => state.selected.length,
-  progress: (state) => {
-    if (state.upload.progress.length === 0) {
-      return 0;
-    }
+  // progress: (state) => {
+  //   if (state.upload.progress.length === 0) {
+  //     return 0;
+  //   }
 
-    let totalSize = state.upload.sizes.reduce((a, b) => a + b, 0);
+  //   let totalSize = state.upload.sizes.reduce((a, b) => a + b, 0);
 
-    let sum = state.upload.progress.reduce((acc, val) => acc + val);
-    return Math.ceil((sum / totalSize) * 100);
-  },
+  //   let sum = state.upload.progress.reduce((acc, val) => acc + val);
+  //   return Math.ceil((sum / totalSize) * 100);
+  // },
   filesInUploadCount: (state) => {
     return Object.keys(state.upload.uploads).length + state.upload.queue.length;
   },

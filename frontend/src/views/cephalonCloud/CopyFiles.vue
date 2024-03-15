@@ -1,15 +1,15 @@
 <template>
   <div
-    v-if="list && list.length > 0"
     class="upload-files netdisk-copy-files"
+    v-if="canStop"
     v-bind:class="{ closed: !open }"
   >
     <div class="card floating">
       <div class="card-title">
         <h2>{{ $t("prompts.copyFiles", { files: list.length }) }}</h2>
         <div class="upload-info">
-          <div class="upload-speed">{{ speed.toFixed(2) }} MB/s</div>
-          <div class="upload-eta">{{ formattedETA }} remaining</div>
+          <!-- <div class="upload-speed">{{ speed.toFixed(2) }} MB/s</div> -->
+          <!-- <div class="upload-eta">{{ formattedETA }} remaining</div> -->
         </div>
         <button
           v-if="false"
@@ -42,10 +42,12 @@
           :aria-label="file.name"
         >
           <div class="file-name">
-            <i class="material-icons"></i> {{ file.name }}
+            <i class="material-icons"></i>
+            <!-- 文件上传中 -->
+            {{ file.name }}
           </div>
           <div class="file-progress">
-            <div v-bind:style="{ width: file.progress + '%' }"></div>
+            <div v-bind:style="{ width: file.process + '%' }"></div>
           </div>
         </div>
       </div>
@@ -55,16 +57,18 @@
 
 <script>
 import buttons from "@/utils/buttons";
-
+import { mapState, mapGetters, mapMutations } from "vuex";
 export default {
   name: "uploadFiles",
   props: ["list", "speed", "eta"],
   data: function () {
     return {
-      open: false,
+      open: true,
     };
   },
   computed: {
+    ...mapState("cep", ["canStop"]),
+    // ...mapGetters("cep", ["isAllFin"]),
     formattedETA() {
       if (!this.eta || this.eta === Infinity) {
         return "--:--:--";
