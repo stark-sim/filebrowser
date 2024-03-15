@@ -3,11 +3,11 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/r3labs/sse/v2"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var DirInfoURL = os.Getenv("USER_CENTER_HOST") + "/v1/cloud-files"
@@ -53,18 +53,7 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 
 	//文件正在向master节点爬取,轮询什么时候爬取完成
 	if myelinResponse.StatusCode == 302 {
-		for {
-			myelinResponse, err = http.DefaultClient.Do(req)
-			if err != nil {
-				fmt.Println("myelin do err")
-				return http.StatusInternalServerError, err
-			}
-			if myelinResponse.StatusCode == 200 {
-				break
-			}
-			//睡眠1s
-			time.Sleep(time.Second)
-		}
+		return http.StatusFound, nil
 	}
 
 	//确认目标文件夹存在
@@ -89,6 +78,40 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	}
 
 	return http.StatusCreated, nil
+}
+
+var cephalonDiskDownloadProgress = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
+	// 向myelin请求下载进度
+	myelinHost := os.Getenv("MYELIN_HOST")
+	md5 := r.URL.Query().Get("stream")
+	client := sse.NewClient(myelinHost + "/size/" + md5)
+	clientCh := make(chan *sse.Event)
+	err := client.SubscribeChanRawWithContext(r.Context(), clientCh)
+	if err != nil {
+		return 0, err
+	}
+
+	// 返回读取的数据
+	server := sse.New()
+	defer server.Close()
+	server.CreateStream(md5)
+	go func() {
+		for {
+			select {
+			case event := <-clientCh:
+				server.TryPublish(md5, &sse.Event{
+					Data: event.Data,
+				})
+			case <-r.Context().Done():
+				fmt.Printf("结束")
+				return
+			}
+		}
+	}()
+	server.ServeHTTP(w, r)
+
+	return 0, nil
+
 }
 
 var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
