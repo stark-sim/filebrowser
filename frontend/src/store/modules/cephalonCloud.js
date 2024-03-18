@@ -19,7 +19,13 @@ const mutations = {
   setListCanStop: (state, value) => {
     state.list[value.index].canStop = value.value;
   },
-  setList: (state, value) => (state.list = value),
+  addList: (state, value) => {
+    state.list.push(...value);
+  },
+  deleteListItem: (state, value) => {},
+  refreshList: (state) => {
+    state.list = [];
+  },
   setCanStop: (state, value) => (state.canStop = value),
 };
 
@@ -28,7 +34,6 @@ const actions = {};
 const getters = {
   isLogged: (state) => state.user !== null,
   isFiles: (state) => !state.loading && state.route.name === "Files",
-  isListing: (state, getters) => getters.isFiles && state.req.isDir,
   selectedCount: (state) => state.selected.length,
   // progress: (state) => {
   //   if (state.upload.progress.length === 0) {

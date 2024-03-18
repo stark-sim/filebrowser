@@ -89,6 +89,7 @@ export default {
     if (this.$store.state.showShell) {
       this.$store.commit("toggleShell");
     }
+    this.$store.commit("setHandlingType", "");
     this.$store.commit("updateRequest", {});
   },
   methods: {

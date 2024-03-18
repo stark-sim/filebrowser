@@ -92,16 +92,27 @@ export default {
     ...mapState({
       fileReq: (state) => state.req,
       bdReq: (state) => state.bd.req,
+      cepReq: (state) => state.cep.req,
     }),
     ...mapGetters(["selectedCount", "isListing"]),
     req() {
-      return this.handlingType === "BaiduNetdisk" ? this.bdReq : this.fileReq;
+      if (this.handlingType === "BaiduNetdisk") return this.bdReq;
+      else if (this.handlingType === "CephalonCloud") return this.cepReq;
+      else return this.fileReq;
     },
     humanSize: function () {
+      console.log(
+        this.isListing,
+        this.handlingType !== "BaiduNetdisk",
+        this.handlingType !== "CephalonCloud"
+      );
       if (
         this.selectedCount === 0 ||
-        (!this.isListing && this.handlingType !== "BaiduNetdisk")
+        (!this.isListing &&
+          this.handlingType !== "BaiduNetdisk" &&
+          this.handlingType !== "CephalonCloud")
       ) {
+        console.log(this.req.size, "??????", this.handlingType);
         return filesize(this.req.size);
       }
 

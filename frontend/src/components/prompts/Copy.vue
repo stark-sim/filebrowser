@@ -106,9 +106,11 @@ export default {
           let temp = { size, name, process: 0, canStop: false };
           loadList.push(temp);
         }
-        store.commit("cep/setList", loadList);
+        store.commit("cep/addList", loadList);
         this.$store.commit("closeHovers");
+        this.$store.commit("resetSelected");
         store.commit("cep/setCanStop", true);
+
         for (let index = 0; index < items.length; index++) {
           let timer = setInterval(() => {
             if (!this.cep.list[index].canStop) {
@@ -128,19 +130,26 @@ export default {
               }
 
               if (this.cep.list[index].process > 90)
-                // store.commit("cep/setListCanStop", { index, value: false });
                 store.commit("cep/setListCanStop", { index, value: true });
             } else clearInterval(timer);
           }, 100);
         }
+
         for (let item of items) {
           await cepApi.fetchDownload(item);
         }
+
         for (let index = 0; index < items.length; index++) {
           store.commit("cep/setListProgressAdd1", { index, value: 100 });
         }
         // store.commit("cep/setProgressAdd1", 100);
+
+        for (let listItem of this.cep.list) {
+          if (listItem.process < 100) return;
+        }
+
         store.commit("cep/setCanStop", false);
+        store.commit("cep/refreshList");
         setTimeout(() => {
           for (let index = 0; index < items.length; index++)
             store.commit("cep/setListProgressAdd1", { index, value: 0 });
