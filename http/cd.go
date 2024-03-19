@@ -38,7 +38,9 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 		return http.StatusInternalServerError, err
 	}
 
-	myelinResponse, err := http.DefaultClient.Do(req)
+	//设置超时
+	client := &http.Client{Timeout: 10 * time.Second}
+	myelinResponse, err := client.Do(req)
 	if err != nil {
 		fmt.Println("myelin do err")
 		return http.StatusInternalServerError, err
@@ -53,17 +55,15 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 
 	//文件正在向master节点爬取,轮询什么时候爬取完成
 	if myelinResponse.StatusCode == 302 {
-		for {
+		for myelinResponse.StatusCode != 200 {
 			myelinResponse, err = http.DefaultClient.Do(req)
 			if err != nil {
 				fmt.Println("myelin do err")
 				return http.StatusInternalServerError, err
 			}
-			if myelinResponse.StatusCode == 200 {
-				break
-			}
-			//睡眠1s
-			time.Sleep(time.Second)
+			fmt.Printf("download code is %d;md5: %s\n", myelinResponse.StatusCode, input.MD5)
+			//睡眠3s
+			time.Sleep(3 * time.Second)
 		}
 	}
 
@@ -85,8 +85,12 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	_, err = io.Copy(newFile, myelinResponse.Body)
 	if err != nil {
 		fmt.Printf("io copy err")
+		if rmErr := os.Remove(filePath); rmErr != nil {
+			fmt.Printf("remove file err %v", rmErr)
+		}
 		return http.StatusInternalServerError, err
 	}
+	fmt.Print("finish\n")
 
 	return http.StatusCreated, nil
 }
