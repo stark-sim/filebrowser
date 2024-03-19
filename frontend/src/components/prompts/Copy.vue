@@ -113,23 +113,23 @@ export default {
 
         for (let index = 0; index < items.length; index++) {
           let timer = setInterval(() => {
-            if (!this.cep.list[index].canStop) {
+            if (!this.cep.list[index]?.canStop) {
               let thistime = parseFloat(
                 (
                   (((Math.random() * 5 + 5) * 1024 * 1024) /
-                    this.cep.list[index].size) *
+                    this.cep.list[index]?.size) *
                   100
                 ).toFixed(2)
               );
-              if (this.cep.list[index].process + thistime < 100) {
+              if (this.cep.list[index]?.process + thistime < 100) {
                 store.commit("cep/setListProgressAdd1", {
                   index,
-                  value: this.cep.list[index].process + thistime,
+                  value: this.cep.list[index]?.process + thistime,
                 });
               } else {
               }
 
-              if (this.cep.list[index].process > 90)
+              if (this.cep.list[index]?.process > 90)
                 store.commit("cep/setListCanStop", { index, value: true });
             } else clearInterval(timer);
           }, 100);
