@@ -116,7 +116,7 @@ export default {
             if (!this.cep.list[index]?.canStop) {
               let thistime = parseFloat(
                 (
-                  (((Math.random() * 5 + 5) * 1024 * 1024) /
+                  (((Math.random() + 3) * 1024 * 1024) /
                     this.cep.list[index]?.size) *
                   100
                 ).toFixed(2)
