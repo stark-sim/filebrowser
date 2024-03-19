@@ -61,7 +61,8 @@ header .menu-button {
 }
 
 header .title{
-  margin-right: 300px; font-weight: 800
+  font-weight: 800;
+  flex: 1 1 auto;
 }
 
 #more {

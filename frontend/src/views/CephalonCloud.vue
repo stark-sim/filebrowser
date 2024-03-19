@@ -45,7 +45,6 @@ export default {
   data: function () {
     return {
       error: null,
-      width: window.innerWidth,
       // speedMbyte: 0,
       // eta: 0,
     };
@@ -124,7 +123,6 @@ export default {
         this.$store.commit("showHover", "help");
       }
     },
-
     // fetchProgress: async function () {
     //   // Reset view information.
     //   this.$store.commit("bd/setRefreshCopy", false);
@@ -204,9 +202,6 @@ export default {
     //   this.prevBytes = copyBytes;
     //   this.lastTimestamp = Date.now();
     // },
-    // windowsResize: throttle(function () {
-    //   this.width = window.innerWidth;
-    // }, 100),
   },
 };
 </script>

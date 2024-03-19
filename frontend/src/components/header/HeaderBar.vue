@@ -36,7 +36,7 @@
 
 <script>
 import { logoURL } from "@/utils/constants";
-
+import throttle from "lodash.throttle";
 import Action from "@/components/header/Action.vue";
 import { mapGetters } from "vuex";
 
@@ -50,12 +50,16 @@ export default {
     return {
       logoURL,
       application: "",
+      width: window.innerWidth,
     };
   },
   methods: {
     openSidebar() {
       this.$store.commit("showHover", "sidebar");
     },
+    windowsResize: throttle(function () {
+      this.width = window.innerWidth;
+    }, 100),
   },
   computed: {
     ...mapGetters(["currentPromptName"]),
@@ -67,7 +71,7 @@ export default {
     if (!sessionStorage.getItem("application")) {
       let params =
         Object.fromEntries(new URLSearchParams(window.location.search)) || "";
-      console.log("???", params?.type);
+
       if (!params?.type) return;
       sessionStorage.setItem("application", params?.type);
 
@@ -75,6 +79,12 @@ export default {
     } else {
       this.application = sessionStorage.getItem("application");
     }
+    // Add the needed event listeners to the window and document.
+    window.addEventListener("resize", this.windowsResize);
+  },
+  beforeDestroy() {
+    // Remove event listeners before destroying this page.
+    window.removeEventListener("resize", this.windowsResize);
   },
 };
 </script>
