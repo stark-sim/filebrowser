@@ -59,6 +59,7 @@ import buttons from "@/utils/buttons";
 import * as upload from "@/utils/upload";
 import { removePrefix } from "@/api/utils";
 import store from "@/store";
+import { baseURL } from "@/utils/constants";
 export default {
   name: "copy",
   components: { FileList },
@@ -147,7 +148,7 @@ export default {
             // 开启获取进度
             await new Promise((resolve) => {
               let sseClient = this.$sse.create({
-                url: `/api/cd/download/size?stream=${item.md5}`,
+                url: `${baseURL}/api/cd/download/size?stream=${item.md5}`,
                 format: "json",
                 withCredentials: true,
                 polyfill: true,
