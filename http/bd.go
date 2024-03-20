@@ -96,7 +96,7 @@ var bdDownLoad = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 		}
 		return http.StatusInternalServerError, err
 	}
-	err = downloadInfo.Download()
+	err = downloadInfo.Download(d.server.Root)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

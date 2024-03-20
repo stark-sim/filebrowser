@@ -7,6 +7,7 @@ import (
 	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
 	"github.com/sirupsen/logrus"
 	"os"
+	"path/filepath"
 )
 
 // LoginCode 百度用户通过授权码进行登录
@@ -134,7 +135,7 @@ func (req DownloadInfoReq) ShowDirInfo() (*string, error) {
 	}
 	return &response, nil
 }
-func (req DownloadInfoReq) Download() error {
+func (req DownloadInfoReq) Download(root string) error {
 	switch req.IsDir {
 	case true:
 		response, _, err := apiClient.MultimediafileApi.Xpanfilelistall(context.Background()).AccessToken(req.AccessToken).Recursion(1).Path(req.Path).Execute()
@@ -173,12 +174,13 @@ func (req DownloadInfoReq) Download() error {
 		for _, meta := range metas.List {
 			if meta.Isdir == 0 {
 				path := req.TargetPath + meta.Path[:len(meta.Path)-len(meta.Filename)]
-				err := os.MkdirAll(path, 0777)
+				fullPath := filepath.Join(root, path)
+				err := os.MkdirAll(fullPath, 0777)
 				if err != nil {
 					return err
 				}
 				go func() {
-					err := Download(path, req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
+					err := Download(fullPath, req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
 					if err != nil {
 						logrus.Error(err)
 					}
@@ -197,13 +199,14 @@ func (req DownloadInfoReq) Download() error {
 			logrus.Error(err)
 			return err
 		}
-		err = os.MkdirAll(req.TargetPath+"/", 0777)
+		fullPath := filepath.Join(root, req.TargetPath)
+		err = os.MkdirAll(fullPath+"/", 0777)
 		if err != nil {
 			return err
 		}
 		for _, meta := range metas.List {
 			go func() {
-				err := Download(req.TargetPath+"/", req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
+				err := Download(fullPath+"/", req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
 				if err != nil {
 					logrus.Error(err)
 				}
