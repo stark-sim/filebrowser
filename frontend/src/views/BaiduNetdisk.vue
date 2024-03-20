@@ -50,6 +50,7 @@ import AuthLogin from "@/views/baiduNetdisk/AuthLogin.vue";
 import Listing from "@/views/baiduNetdisk/Listing.vue";
 import ProgressBar from "vue-simple-progress";
 import CopyFiles from "@/views/baiduNetdisk/CopyFiles.vue";
+import { nextTick } from "vue";
 
 /**
  * 1. 登录的情况
@@ -124,6 +125,7 @@ export default {
   async created() {
     try {
       this.setLoading(true);
+      await nextTick();
       this.$store.commit("setHandlingType", "BaiduNetdisk");
       await bdApi.getAccessToken();
       const at = bdApi.getToken();

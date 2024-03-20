@@ -29,9 +29,7 @@ import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import Errors from "@/views/Errors.vue";
 import Listing from "@/views/cephalonCloud/Listing.vue";
 import CopyFiles from "@/views/cephalonCloud/CopyFiles.vue";
-function clean(path) {
-  return path.endsWith("/") ? path.slice(0, -1) : path;
-}
+import { nextTick } from "vue";
 
 export default {
   name: "files",
@@ -53,10 +51,11 @@ export default {
     ...mapState(["loading", "reload"]),
     ...mapState("cep", ["req", "progress", "list"]),
     currentView() {
-      if (this.loading) {
-        return null;
-      } else if (this.req) {
+      if (this.req) {
         return "listing";
+      } else {
+        // this.loading
+        return null;
       }
     },
     currentProgresses() {
@@ -67,7 +66,8 @@ export default {
       return list;
     },
   },
-  created() {
+  async created() {
+    await nextTick();
     this.$store.commit("setHandlingType", "CephalonCloud");
     this.fetchData();
   },
