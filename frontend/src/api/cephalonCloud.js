@@ -37,13 +37,16 @@ async function fetchUtil(
     throw e;
   }
 
+  // throw new Error(502);
+  if (res.status == 302 && url == "/api/cd/download") {
+    return await res;
+  }
   if (res.status < 200 || res.status > 299) {
-    const error = new Error(await res.text());
+    // const error = new Error(await res.text());``
     error.status = res.status;
 
     if (res.status === 401) {
       atExpired && Vue.prototype.$showError(i18n.t(atExpired), false, 1500);
-      setAt && logout();
     }
 
     throw error;

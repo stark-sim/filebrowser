@@ -4,7 +4,7 @@ const state = {
   req: {},
   refreshCopy: false,
 
-  list: [],
+  list: {},
   canStop: false,
 };
 
@@ -14,19 +14,17 @@ const mutations = {
   updateReq: (state, value) => (state.req = value),
   setRefreshCopy: (state, value) => (state.refreshCopy = value),
   setListProgressAdd1: (state, value) => {
-    if (state.list[value.index]) state.list[value.index].process = value.value;
+    if (state.list[value.name]) state.list[value.name].process = value.value;
   },
-  setListCanStop: (state, value) => {
-    state.list[value.index].canStop = value.value;
-  },
-  addList: (state, value) => {
-    state.list.push(...value);
-  },
-  deleteListItem: (state, value) => {},
-  refreshList: (state) => {
-    state.list = [];
+  setList: (state, value) => {
+    console.log("vuex store", value);
+    state.list = value;
   },
   setCanStop: (state, value) => (state.canStop = value),
+  deleteListItem: (state, value) => {
+    console.log(value, "delete");
+    delete state.list[value];
+  },
 };
 
 const actions = {};

@@ -35,7 +35,7 @@
       <div class="card-content file-icons">
         <div
           class="file"
-          v-for="file in list"
+          v-for="file in Object.values(list)"
           :key="file.name"
           :data-dir="file.isDir"
           :data-type="file.type"

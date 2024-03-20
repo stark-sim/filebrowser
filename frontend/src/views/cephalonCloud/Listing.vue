@@ -794,9 +794,7 @@ export default {
     },
     async copyToFiles() {
       // init state.req
-
       try {
-        if (this.list.length > 0) return;
         const res = await api.fetch("/");
         this.$store.commit("updateReq", res);
         this.$store.commit("showHover", "copy");

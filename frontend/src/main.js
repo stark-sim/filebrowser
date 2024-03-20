@@ -5,6 +5,7 @@ import store from "@/store";
 import router from "@/router";
 import i18n from "@/i18n";
 import Vue from "@/utils/vue";
+import VueSSE from "vue-sse";
 import { recaptcha, loginPage } from "@/utils/constants";
 import { login, validateLogin } from "@/utils/auth";
 import App from "@/App.vue";
@@ -37,7 +38,6 @@ async function start() {
       check();
     });
   }
-
   new Vue({
     el: "#app",
     store,
@@ -49,3 +49,4 @@ async function start() {
 }
 
 start();
+Vue.use(VueSSE);

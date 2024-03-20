@@ -17,7 +17,7 @@
       </h2>
     </div>
 
-    <copy-files :list="list" :progress="progress" />
+    <copy-files :list="currentProgresses" :progress="progress" />
   </div>
 </template>
 
@@ -60,10 +60,11 @@ export default {
       }
     },
     currentProgresses() {
-      // return Object.keys(this.progresses).map((name) => ({
-      //   name,
-      //   progress: this.progresses[name].progress,
-      // }));
+      let list = Object.keys(this.list).map((name) => ({
+        name,
+        process: this.list[name].process,
+      }));
+      return list;
     },
   },
   created() {
