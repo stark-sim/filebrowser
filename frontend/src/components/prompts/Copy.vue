@@ -165,7 +165,7 @@ export default {
                   value: percent * 100,
                 });
 
-                if (percent === 1) {
+                if (percent === 1 || msg == -2) {
                   sseClient.disconnect();
                   // 再次下载请求
                   await cepApi.fetchDownload({

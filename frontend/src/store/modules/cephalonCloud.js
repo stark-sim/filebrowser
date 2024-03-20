@@ -17,12 +17,10 @@ const mutations = {
     if (state.list[value.name]) state.list[value.name].process = value.value;
   },
   setList: (state, value) => {
-    console.log("vuex store", value);
     state.list = value;
   },
   setCanStop: (state, value) => (state.canStop = value),
   deleteListItem: (state, value) => {
-    console.log(value, "delete");
     delete state.list[value];
   },
 };
