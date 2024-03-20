@@ -104,5 +104,6 @@ func NewHandler(
 	cephalonDisk.PathPrefix("/download").Handler(monkey(cephalonDiskDownload, "/api/cd/download")).Methods("POST")
 	cephalonDisk.PathPrefix("/dir").Handler(monkey(cephalonDirInfo, "/api/cd/dir")).Methods("GET")
 	cephalonDisk.PathPrefix("/user-space").Handler(monkey(cephalonUserSpace, "/api/cd/user-space")).Methods("GET")
+	cephalonDisk.PathPrefix("/download/size").Handler(monkey(cephalonDiskDownloadProgress, "/api/cd/download/size")).Methods("GET")
 	return stripPrefix(server.BaseURL, r), nil
 }
