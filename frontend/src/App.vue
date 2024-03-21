@@ -11,6 +11,7 @@
 export default {
   name: "app",
   mounted() {
+    console.log(process.env);
     const loading = document.getElementById("loading");
     loading.classList.add("done");
 
