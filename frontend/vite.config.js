@@ -30,7 +30,7 @@ export default defineConfig(({ command }) => {
       plugins,
       resolve,
       define: {
-        'process.env': process.env,
+        "process.env": process.env,
       },
       server: {
         proxy: {
@@ -56,6 +56,9 @@ export default defineConfig(({ command }) => {
     return {
       plugins,
       resolve,
+      define: {
+        "process.env": process.env,
+      },
       base: "",
       build: {
         rollupOptions: {
