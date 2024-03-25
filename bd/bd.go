@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // LoginCode 百度用户通过授权码进行登录
@@ -18,7 +19,10 @@ type LoginCode struct {
 var (
 	configuration  *openapi.Configuration
 	apiClient      *openapi.APIClient
-	DownloadingMap map[string]*Temple
+	DownloadingMap = struct {
+		m map[string]*Temple
+		sync.RWMutex
+	}{m: make(map[string]*Temple)}
 )
 
 type Temple struct {
@@ -32,7 +36,6 @@ type Temple struct {
 func init() {
 	configuration = openapi.NewConfiguration()
 	apiClient = openapi.NewAPIClient(configuration)
-	DownloadingMap = make(map[string]*Temple)
 }
 func (code LoginCode) VerifyCode() (string, error) {
 	ctx := context.Background()
@@ -173,22 +176,20 @@ func (req DownloadInfoReq) Download(root string) error {
 
 		for _, meta := range metas.List {
 			if meta.Isdir == 0 {
-				path := req.TargetPath + meta.Path[:len(meta.Path)-len(meta.Filename)]
-				fullPath := filepath.Join(root, path)
+				lastPath := filepath.Base(filepath.Dir(meta.Path))
+				fullPath := filepath.Join(root, req.TargetPath, lastPath) + "/"
 				err := os.MkdirAll(fullPath, 0777)
 				if err != nil {
 					return err
 				}
+				//确保每个goroutine都有自己的meta
+				meta_ := meta
 				go func() {
-					err := Download(fullPath, req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
+					err := Download(fullPath, req.AccessToken, meta_.Dlink, meta_.Filename, meta_.Size)
 					if err != nil {
 						logrus.Error(err)
 					}
 				}()
-				if err != nil {
-					logrus.Error(err)
-					return err
-				}
 			}
 		}
 	case false:
@@ -199,14 +200,14 @@ func (req DownloadInfoReq) Download(root string) error {
 			logrus.Error(err)
 			return err
 		}
-		fullPath := filepath.Join(root, req.TargetPath)
-		err = os.MkdirAll(fullPath+"/", 0777)
+		fullPath := filepath.Join(root, req.TargetPath) + "/"
+		err = os.MkdirAll(fullPath, 0777)
 		if err != nil {
 			return err
 		}
 		for _, meta := range metas.List {
 			go func() {
-				err := Download(fullPath+"/", req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
+				err := Download(fullPath, req.AccessToken, meta.Dlink, meta.Filename, meta.Size)
 				if err != nil {
 					logrus.Error(err)
 				}
@@ -226,9 +227,10 @@ type DownloadProgressReq struct {
 }
 
 func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
-	for _, info := range DownloadingMap {
+	DownloadingMap.Lock()
+	for _, info := range DownloadingMap.m {
 		info.Percentage = float64(info.Current) / float64(info.Size)
-
 	}
-	return DownloadingMap, nil
+	DownloadingMap.Unlock()
+	return DownloadingMap.m, nil
 }
