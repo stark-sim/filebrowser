@@ -16,6 +16,12 @@
   display: flex;
   align-items: center;
   overflow: hidden;
+  justify-content: space-between;
+}
+
+.close{  
+  font-size: 1.1em;
+  cursor: pointer;
 }
 
 .upload-files .file .file-name i {

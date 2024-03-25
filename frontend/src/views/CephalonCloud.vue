@@ -30,6 +30,9 @@ import Errors from "@/views/Errors.vue";
 import Listing from "@/views/cephalonCloud/Listing.vue";
 import CopyFiles from "@/views/cephalonCloud/CopyFiles.vue";
 import { nextTick } from "vue";
+import store from "@/store";
+import * as local from "@/utils/local";
+import { baseURL } from "@/utils/constants";
 
 export default {
   name: "files",
@@ -48,7 +51,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(["loading", "reload"]),
+    ...mapState(["loading", "reload", "cep"]),
     ...mapState("cep", ["req", "progress", "list"]),
     currentView() {
       if (this.req) {
@@ -59,9 +62,9 @@ export default {
       }
     },
     currentProgresses() {
-      let list = Object.keys(this.list).map((name) => ({
+      let list = Object.keys(this.cep.list).map((name) => ({
         name,
-        process: this.list[name].process,
+        process: this.cep.list[name]?.process,
       }));
       return list;
     },
@@ -78,9 +81,18 @@ export default {
         this.fetchData();
       }
     },
+    list: {
+      handler: function (value) {
+        console.log(2, value);
+      },
+      immediate: true,
+      deep: true,
+    },
   },
+
   mounted() {
     window.addEventListener("keydown", this.keyEvent);
+    this.checkLoadList();
   },
   beforeDestroy() {
     window.removeEventListener("keydown", this.keyEvent);
@@ -124,85 +136,96 @@ export default {
         this.$store.commit("showHover", "help");
       }
     },
-    // fetchProgress: async function () {
-    //   // Reset view information.
-    //   this.$store.commit("bd/setRefreshCopy", false);
+    // 刷新重新下载未完成的
+    async checkLoadList() {
+      try {
+        // 判断在local是否存有未完成请求
+        let tempList = localStorage.getItem("list");
+        // 若有
+        if (tempList && tempList !== "{}") {
+          tempList = JSON.parse(tempList);
+          // 存入vuex
+          store.commit("cep/setList", tempList);
+          // 循环请求每一个
+          const values = Object.values(tempList);
+          store.commit("cep/setCanStop", true);
+          for (let i = 0; i < values.length; i++) {
+            const item = values[i];
+            if (this.cep.list[values[i].name]) {
+              const res = await cepApi.fetchDownload({
+                md5: item.md5,
+                target: item.target,
+                filename: item.name,
+              });
 
-    //   try {
-    //     const res = await bdApi.fetchProgress();
-    //     const names = Object.keys(res); // 文件或文件夹
+              if (this.cep.list[values[i].name]) {
+                // 正常201完成 设置进度到100
+                if (res.status === 201)
+                  store.commit("cep/setListProgressAdd1", {
+                    name: item.name,
+                    value: 100,
+                  });
+                else if (res.status === 302) {
+                  // 开启获取进度
+                  await new Promise((resolve) => {
+                    let sseClient = this.$sse.create({
+                      url: `${baseURL}/api/cd/download/size?stream=${item.md5}`,
+                      format: "json",
+                      withCredentials: true,
+                      polyfill: true,
+                    });
+                    sseClient.connect().then((sse) => {
+                      store.commit("cep/setListItemSSE", {
+                        name: item.name,
+                        sse: sseClient,
+                      });
 
-    //     // 从百度网盘下载到 My Files 的进度
-    //     let progresses = {},
-    //       copyBytes = 0,
-    //       totalBytes = 0;
-    //     for (let n of names) {
-    //       let { percentage, size_b: size } = res[n]; // 返回的 size 是后端以 固定大小如 10MB 对文件切片后的次数
-    //       if (percentage >= 1) continue;
+                      // 建立连接 onmessage
+                      sseClient.on("message", async (msg) => {
+                        let percent = msg / item.size;
 
-    //       let name = n.split("/").slice(-1)[0];
-    //       progresses[name] = {
-    //         progress: percentage * 100,
-    //         size,
-    //       };
-    //       copyBytes += percentage * size;
-    //       totalBytes += size;
-    //     }
+                        store.commit("cep/setListProgressAdd1", {
+                          name: item.name,
+                          value: percent * 100,
+                        });
 
-    //     this.progresses = progresses;
+                        if (percent === 1 || msg == -2) {
+                          sseClient.disconnect();
+                          // 再次下载请求
+                          await cepApi.fetchDownload({
+                            md5: item.md5,
+                            target: target_path,
+                            filename: item.name,
+                          });
+                          resolve();
+                        }
+                      });
+                    });
+                  });
+                }
 
-    //     if (Object.keys(progresses).length > 0) {
-    //       this.hasProgress = true;
-    //       if (!this.hasStarted) {
-    //         this.lastTimestamp = Date.now();
-    //         this.prevBytes = copyBytes;
-    //         this.hasStarted = true;
-    //       }
+                // 然后从loadList中删除
+                setTimeout(() => {
+                  store.commit("cep/deleteListItem", item.name);
+                  local.deleteListItem(item.name);
+                  if (JSON.stringify(this.cep.list) === "{}") {
+                    // 关闭进度对象展示
+                    store.commit("cep/setCanStop", false);
+                    // // 清空VUEX中的进度条对象
+                    store.commit("cep/setList", {});
 
-    //       window.clearTimeout(this.timer);
-    //       this.timer = window.setTimeout(() => {
-    //         this.fetchProgress();
-    //         this.calcProgress(copyBytes, totalBytes);
-    //       }, 1500);
-    //     } else if (this.hasProgress) {
-    //       this.speedMbyte = 0;
-    //       this.eta = 0;
-    //       window.clearTimeout(this.timer);
-    //       this.hasProgress = false;
-    //       this.hasStarted = false;
-    //       this.recentSpeeds = [];
-    //       this.lastTimestamp = 0;
-    //       this.prevBytes = 0;
-
-    //       this.$showSuccess(this.$t("success.filesCopied"));
-    //     }
-    //   } catch (e) {
-    //     this.$showError(e);
-    //   }
-    // },
-    // calcProgress(copyBytes, totalBytes) {
-    //   let elapsedTime = (Date.now() - this.lastTimestamp) / 1000;
-    //   let lastCopyBytes = copyBytes - this.prevBytes;
-    //   let currentSpeed = lastCopyBytes / (1024 * 1024) / elapsedTime;
-
-    //   if (this.recentSpeeds.length >= 10) {
-    //     this.recentSpeeds.shift();
-    //   }
-    //   this.recentSpeeds.push(currentSpeed);
-
-    //   let avgSpeed =
-    //     this.recentSpeeds.reduce((sum, item) => sum + item) /
-    //     this.recentSpeeds.length;
-
-    //   this.speedMbyte = avgSpeed;
-    //   this.eta =
-    //     this.speedMbyte === 0
-    //       ? Infinity
-    //       : (totalBytes - copyBytes) / (1024 * 1024) / this.speedMbyte;
-
-    //   this.prevBytes = copyBytes;
-    //   this.lastTimestamp = Date.now();
-    // },
+                    // // 提示成功
+                    this.$showSuccess(this.$t("success.filesCopied"));
+                  }
+                }, 100);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    },
   },
 };
 </script>

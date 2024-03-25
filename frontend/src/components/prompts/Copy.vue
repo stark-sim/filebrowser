@@ -60,6 +60,7 @@ import * as upload from "@/utils/upload";
 import { removePrefix } from "@/api/utils";
 import store from "@/store";
 import { baseURL } from "@/utils/constants";
+import * as local from "@/utils/local";
 export default {
   name: "copy",
   components: { FileList },
@@ -113,6 +114,7 @@ export default {
             canStop: false,
             md5,
             target: target_path,
+            sse: null,
           };
           loadList[name] = temp;
         }
@@ -122,6 +124,8 @@ export default {
 
         // 将进度条对象放到vuex
         store.commit("cep/setList", loadList);
+        // 存储到本地
+        localStorage.setItem("list", JSON.stringify(loadList));
         // 关闭弹窗
         this.$store.commit("closeHovers");
         // 取消选中
@@ -132,66 +136,84 @@ export default {
         // 开始请求
         for (let i = 0; i < values.length; i++) {
           const item = values[i];
-          const res = await cepApi.fetchDownload({
-            md5: item.md5,
-            target: target_path,
-            filename: item.name,
-          });
-
-          // 正常201完成 设置进度到100
-          if (res.status === 201)
-            store.commit("cep/setListProgressAdd1", {
-              name: item.name,
-              value: 100,
+          if (this.cep.list[values[i].name]) {
+            const res = await cepApi.fetchDownload({
+              md5: item.md5,
+              target: target_path,
+              filename: item.name,
             });
-          else if (res.status === 302) {
-            // 开启获取进度
-            await new Promise((resolve) => {
-              let sseClient = this.$sse.create({
-                url: `${baseURL}/api/cd/download/size?stream=${item.md5}`,
-                format: "json",
-                withCredentials: true,
-                polyfill: true,
-              });
 
-              sseClient.connect().then((sse) => {
-                console.log("linking", sse);
-              });
-              // 建立连接 onmessage
-              sseClient.on("message", async (msg) => {
-                let percent = msg / item.size;
-
+            if (this.cep.list[values[i].name]) {
+              // 正常201完成 设置进度到100
+              if (res.status === 201)
                 store.commit("cep/setListProgressAdd1", {
                   name: item.name,
-                  value: percent * 100,
+                  value: 100,
                 });
-
-                if (percent === 1 || msg == -2) {
-                  sseClient.disconnect();
-                  // 再次下载请求
-                  await cepApi.fetchDownload({
-                    md5: item.md5,
-                    target: target_path,
-                    filename: item.name,
+              else if (res.status === 302) {
+                // 开启获取进度
+                await new Promise((resolve) => {
+                  let sseClient = this.$sse.create({
+                    url: `${baseURL}/api/cd/download/size?stream=${item.md5}`,
+                    format: "json",
+                    withCredentials: true,
+                    polyfill: true,
                   });
-                  resolve();
-                }
-              });
-            });
-          }
-          // 然后从loadList中删除？
-          setTimeout(() => {
-            store.commit("cep/deleteListItem", item.name);
-            if (JSON.stringify(this.cep.list) === "{}") {
-              // 关闭进度对象展示
-              store.commit("cep/setCanStop", false);
-              // // 清空VUEX中的进度条对象
-              store.commit("cep/setList", {});
+                  let timer = setInterval(() => {
+                    // 设置一个定时循环检测此进度条是否被删除，如果传输中被删除，则结束并进行下一个
+                    // 为什么一定要在这里disconnect：如果在CopyFiles断开连接，则这边的onMessage不会触发
+                    // 则无法resolve，会卡在这里，不会执行下一次循环
+                    if (!this.cep.list[values[i].name]) {
+                      store.commit("cep/disconnectSSE", values[i].name);
+                      clearInterval(timer);
+                      resolve();
+                    }
+                  }, 2000);
+                  sseClient.connect().then((sse) => {
+                    store.commit("cep/setListItemSSE", {
+                      name: item.name,
+                      sse: sseClient,
+                    });
+                    // 建立连接 onmessage
+                    sseClient.on("message", async (msg) => {
+                      let percent = msg / item.size;
 
-              // // 提示成功
-              this.$showSuccess(this.$t("success.filesCopied"));
+                      store.commit("cep/setListProgressAdd1", {
+                        name: item.name,
+                        value: percent * 100,
+                      });
+
+                      if (percent === 1 || msg == -2) {
+                        sseClient.disconnect();
+                        // 再次下载请求
+                        await cepApi.fetchDownload({
+                          md5: item.md5,
+                          target: target_path,
+                          filename: item.name,
+                        });
+                        resolve();
+                      }
+                    });
+                  });
+                });
+              }
+
+              // 然后从loadList中删除？
+              setTimeout(() => {
+                store.commit("cep/deleteListItem", item.name);
+                local.deleteListItem(item.name);
+                if (JSON.stringify(this.cep.list) === "{}") {
+                  // 关闭进度对象展示
+                  store.commit("cep/setCanStop", false);
+                  // // 清空VUEX中的进度条对象
+                  store.commit("cep/setList", {});
+
+                  // // 提示成功
+                  this.$showSuccess(this.$t("success.filesCopied"));
+                }
+              }, 100);
             }
-          }, 100);
+          }
         }
       } catch (e) {
         if (e.status === 403)

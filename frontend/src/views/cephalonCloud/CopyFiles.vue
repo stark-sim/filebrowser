@@ -1,7 +1,7 @@
 <template>
   <div
-    class="upload-files netdisk-copy-files"
     v-if="canStop"
+    class="upload-files netdisk-copy-files"
     v-bind:class="{ closed: !open }"
   >
     <div class="card floating">
@@ -42,9 +42,10 @@
           :aria-label="file.name"
         >
           <div class="file-name">
-            <i class="material-icons"></i>
-            <!-- 文件上传中 -->
-            {{ file.name }}
+            <div>
+              <i class="material-icons"></i> <span>{{ file.name }}</span>
+            </div>
+            <div class="close" @click="cancel(file)">✖️</div>
           </div>
           <div class="file-progress">
             <div v-bind:style="{ width: file.process + '%' }"></div>
@@ -58,6 +59,9 @@
 <script>
 import buttons from "@/utils/buttons";
 import { mapState, mapGetters, mapMutations } from "vuex";
+import store from "@/store";
+import * as local from "@/utils/local";
+
 export default {
   name: "uploadFiles",
   props: ["list", "speed", "eta"],
@@ -67,6 +71,7 @@ export default {
     };
   },
   computed: {
+    ...mapState(["cep"]),
     ...mapState("cep", ["canStop"]),
     // ...mapGetters("cep", ["isAllFin"]),
     formattedETA() {
@@ -93,6 +98,13 @@ export default {
       if (confirm(this.$t("upload.abortUpload"))) {
         buttons.done("copy");
         this.open = false;
+      }
+    },
+    cancel(file) {
+      store.commit("cep/deleteListItem", file.name);
+      local.deleteListItem(file.name);
+      if (JSON.stringify(this.cep.list) == "{}") {
+        store.commit("cep/setCanStop", false);
       }
     },
   },

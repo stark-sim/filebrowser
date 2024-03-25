@@ -1,3 +1,5 @@
+import Vue from "vue";
+
 const state = {
   at: "",
   user: null,
@@ -20,8 +22,15 @@ const mutations = {
     state.list = value;
   },
   setCanStop: (state, value) => (state.canStop = value),
+  setListItemSSE: (state, value) => {
+    state.list[value.name].sse = value.sse;
+  },
   deleteListItem: (state, value) => {
     delete state.list[value];
+    state.list = Object.assign({}, state.list);
+  },
+  disconnectSSE: (state, value) => {
+    if (state.list[value]?.sse) state.list[value]?.sse?.disconnect();
   },
 };
 
