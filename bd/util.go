@@ -93,7 +93,7 @@ func SendHTTPRequest(url string, body io.Reader, headers map[string]string) (str
 }
 
 // for download
-func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (string, int, error) {
+func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (io.ReadCloser, int, error) {
 	// timeout := 500 * time.Second
 	retryTimes := 3
 	tr := &http.Transport{
@@ -104,7 +104,7 @@ func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (stri
 	// httpClient.Timeout = timeout
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
-		return "", 0, err
+		return nil, 0, err
 	}
 	// request header
 	for k, v := range headers {
@@ -118,14 +118,9 @@ func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (stri
 			break
 		}
 		if i == retryTimes {
-			return "", 0, err
+			return nil, 0, err
 		}
 	}
 
-	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", resp.StatusCode, err
-	}
-	return string(respBody), resp.StatusCode, nil
+	return resp.Body, resp.StatusCode, nil
 }

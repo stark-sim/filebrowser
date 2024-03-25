@@ -112,7 +112,6 @@ var bdDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *data) (
 		logrus.Error(err)
 		return renderJSON(w, r, err)
 	}
-	logrus.Info(string(all))
 	percentage, err := downloadProgress.GetDownloadProgress()
 	if err != nil {
 		return 0, err
