@@ -1,17 +1,11 @@
 import Vue from "vue";
 import store from "@/store";
-import router from "@/router";
 import { baseURL } from "@/utils/constants";
 import { removePrefix, fetchURL, fetchJSON } from "@/api/utils";
 import i18n from "@/i18n";
 
 /* util  */
-async function fetchUtil(
-  url,
-  opts,
-  setAt = true,
-  atExpired = "baiduNetdisk.authExpired"
-) {
+async function fetchUtil(url, opts, atExpired = "baiduNetdisk.authExpired") {
   opts = opts || {};
   opts.headers = opts.headers || {};
   opts.body = opts.body || {};
@@ -33,18 +27,17 @@ async function fetchUtil(
   } catch (e) {
     // const error = new Error("000 No connection");
     // error.status = 0;
-
+    console.log(e);
     throw e;
   }
 
   // throw new Error(502);
-  if (res.status == 302 && url == "/api/cd/download") {
+  if ((res.status == 302 || res.status == 404) && url == "/api/cd/download") {
     return await res;
   }
   if (res.status < 200 || res.status > 299) {
-    // const error = new Error(await res.text());``
+    const error = new Error(await res.text());
     error.status = res.status;
-
     if (res.status === 401) {
       atExpired && Vue.prototype.$showError(i18n.t(atExpired), false, 1500);
     }

@@ -89,6 +89,7 @@ export default {
     },
     cepDownload: async function () {
       try {
+        let flag = false;
         buttons.loading("copy");
         // 获取选中的文件信息，下载请求需要的参数
         let items = [],
@@ -135,6 +136,7 @@ export default {
 
         // 开始请求
         for (let i = 0; i < values.length; i++) {
+          flag = false;
           const item = values[i];
           if (this.cep.list[values[i].name]) {
             const res = await cepApi.fetchDownload({
@@ -145,12 +147,12 @@ export default {
 
             if (this.cep.list[values[i].name]) {
               // 正常201完成 设置进度到100
-              if (res.status === 201)
+              if (res.status === 201) {
                 store.commit("cep/setListProgressAdd1", {
                   name: item.name,
                   value: 100,
                 });
-              else if (res.status === 302) {
+              } else if (res.status === 302) {
                 // 开启获取进度
                 await new Promise((resolve) => {
                   let sseClient = this.$sse.create({
@@ -169,7 +171,7 @@ export default {
                       resolve();
                     }
                   }, 2000);
-                  sseClient.connect().then((sse) => {
+                  sseClient.connect().then(() => {
                     store.commit("cep/setListItemSSE", {
                       name: item.name,
                       sse: sseClient,
@@ -196,8 +198,14 @@ export default {
                     });
                   });
                 });
+              } else if (res.status === 404) {
+                this.$showError(
+                  { message: res.status + " " + res.statusText },
+                  false,
+                  1500
+                );
+                flag = true;
               }
-
               // 然后从loadList中删除？
               setTimeout(() => {
                 store.commit("cep/deleteListItem", item.name);
@@ -205,11 +213,13 @@ export default {
                 if (JSON.stringify(this.cep.list) === "{}") {
                   // 关闭进度对象展示
                   store.commit("cep/setCanStop", false);
-                  // // 清空VUEX中的进度条对象
+                  // 清空VUEX中的进度条对象
                   store.commit("cep/setList", {});
 
-                  // // 提示成功
-                  this.$showSuccess(this.$t("success.filesCopied"));
+                  // 提示成功
+                  // flag用作控制提示是否弹出成功 当出现404时且该次请求是最后一条 则不现实成功提示 避免歧义
+                  // 每次请求会将flag赋值为false 404将赋值为true
+                  if (!flag) this.$showSuccess(this.$t("success.filesCopied"));
                 }
               }, 100);
             }
@@ -224,7 +234,9 @@ export default {
           );
         else if (e.status === 500)
           this.$showError({ message: this.$t("errors.internal") }, false, 1500);
-        else this.$showError(e);
+        else {
+          this.$showError({ message: e.status }, false, 1500);
+        }
         // else this.$showError(e?.message || e);
 
         buttons.done("copy");
