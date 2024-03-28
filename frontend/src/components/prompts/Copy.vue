@@ -200,9 +200,11 @@ export default {
                 });
               } else if (res.status === 404) {
                 this.$showError(
-                  { message: res.status + " " + res.statusText },
-                  false,
-                  1500
+                  {
+                    message:
+                      item.name + ": " + res.status + " " + res.statusText,
+                  },
+                  false
                 );
                 flag = true;
               }
