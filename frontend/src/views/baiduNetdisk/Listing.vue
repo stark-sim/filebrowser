@@ -401,7 +401,7 @@ export default {
           "sorting",
         ]);
       } catch (e) {
-        this.$showError(e);
+        this.$showError(e?.message || e, false);
       }
 
       this.$store.commit("setReload", true);
@@ -481,7 +481,7 @@ export default {
         this.$store.commit("updateReq", res);
         this.$store.commit("showHover", "copy");
       } catch (e) {
-        this.$showError(e);
+        this.$showError(e?.message || e, false);
       }
     },
   },

@@ -54,7 +54,8 @@
     "internal": "Something really went wrong.",
     "notFound": "This location can't be reached.",
     "connection": "The server can't be reached.",
-    "retry": "Network congestion, please try again later."
+    "retry": "Network congestion, please try again later.",
+    "uploadingRetry": "Error in transmission. Please refresh the page to continue uploading."
   },
   "files": {
     "body": "Body",

@@ -252,7 +252,11 @@ export default {
           this.$showSuccess(this.$t("success.filesCopied"));
         }
       } catch (e) {
-        this.$showError(e?.message || e);
+        if (e.status === 502) {
+          this.$showError(this.$t("errors.uploadingRetry"), false);
+        } else {
+          this.$showError(e?.message || e, false);
+        }
       }
     },
     calcProgress(copyBytes, totalBytes) {
