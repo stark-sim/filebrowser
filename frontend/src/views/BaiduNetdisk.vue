@@ -252,7 +252,7 @@ export default {
           this.$showSuccess(this.$t("success.filesCopied"));
         }
       } catch (e) {
-        this.$showError(e);
+        this.$showError(e?.message || e);
       }
     },
     calcProgress(copyBytes, totalBytes) {
