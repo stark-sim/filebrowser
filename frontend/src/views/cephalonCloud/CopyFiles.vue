@@ -44,6 +44,10 @@
           <div class="file-name">
             <div>
               <i class="material-icons"></i> <span>{{ file.name }}</span>
+              <div class="download-status" v-show="file.process != 0">
+                {{ file.speed }}MB/s
+                <span>{{ formattedETA(file.remain) }} remaining</span>
+              </div>
             </div>
             <div class="close" @click="cancel(file)">✖️</div>
           </div>
@@ -58,7 +62,7 @@
 
 <script>
 import buttons from "@/utils/buttons";
-import { mapState, mapGetters, mapMutations } from "vuex";
+import { mapState } from "vuex";
 import store from "@/store";
 import * as local from "@/utils/local";
 
@@ -74,12 +78,14 @@ export default {
     ...mapState(["cep"]),
     ...mapState("cep", ["canStop"]),
     // ...mapGetters("cep", ["isAllFin"]),
-    formattedETA() {
-      if (!this.eta || this.eta === Infinity) {
+  },
+  methods: {
+    formattedETA(time) {
+      if (!time || time === Infinity) {
         return "--:--:--";
       }
 
-      let totalSeconds = this.eta;
+      let totalSeconds = time;
       const hours = Math.floor(totalSeconds / 3600);
       totalSeconds %= 3600;
       const minutes = Math.floor(totalSeconds / 60);
@@ -89,8 +95,7 @@ export default {
         .toString()
         .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     },
-  },
-  methods: {
+
     toggle: function () {
       this.open = !this.open;
     },

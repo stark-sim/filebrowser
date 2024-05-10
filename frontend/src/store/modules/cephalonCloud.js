@@ -1,5 +1,3 @@
-import Vue from "vue";
-
 const state = {
   at: "",
   user: null,
@@ -16,7 +14,19 @@ const mutations = {
   updateReq: (state, value) => (state.req = value),
   setRefreshCopy: (state, value) => (state.refreshCopy = value),
   setListProgressAdd1: (state, value) => {
-    if (state.list[value.name]) state.list[value.name].process = value.value;
+    if (state.list[value.name]) {
+      state.list[value.name].process = value.value;
+    }
+  },
+  setListSpeed: (state, value) => {
+    if (state.list[value.name]) {
+      state.list[value.name].speed = value.value;
+    }
+  },
+  setListRemain: (state, value) => {
+    if (state.list[value.name]) {
+      state.list[value.name].remain = value.value;
+    }
   },
   setList: (state, value) => {
     state.list = value;
@@ -30,6 +40,7 @@ const mutations = {
     state.list = Object.assign({}, state.list);
   },
   disconnectSSE: (state, value) => {
+    console.log(Object.values(state.list));
     if (state.list[value]?.sse) state.list[value]?.sse?.disconnect();
   },
 };

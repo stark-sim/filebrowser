@@ -112,6 +112,8 @@ export default {
             size,
             name,
             process: 0,
+            speed: 0,
+            remain: 0,
             canStop: false,
             md5,
             target: target_path,
@@ -153,6 +155,7 @@ export default {
                   value: 100,
                 });
               } else if (res.status === 302) {
+                let speedBox = [];
                 // 开启获取进度
                 await new Promise((resolve) => {
                   let sseClient = this.$sse.create({
@@ -166,7 +169,7 @@ export default {
                     // 为什么一定要在这里disconnect：如果在CopyFiles断开连接，则这边的onMessage不会触发
                     // 则无法resolve，会卡在这里，不会执行下一次循环
                     if (!this.cep.list[values[i].name]) {
-                      store.commit("cep/disconnectSSE", values[i].name);
+                      sseClient.disconnect();
                       clearInterval(timer);
                       resolve();
                     }
@@ -178,15 +181,43 @@ export default {
                     });
                     // 建立连接 onmessage
                     sseClient.on("message", async (msg) => {
+                      let speed =
+                        Math.abs(
+                          msg -
+                            (this.cep.list[item.name].process / 100) * item.size
+                        ) / 2;
+                      if (speedBox.length == 5) speedBox.shift();
+                      speedBox.push(speed);
+                      let showSpeed;
+                      let sum = 0;
+                      speedBox.forEach((item) => {
+                        sum += item;
+                      });
+                      showSpeed = sum / speedBox.length;
                       let percent = msg / item.size;
-
+                      let remain =
+                        (item.size - msg) / showSpeed < 0
+                          ? 0
+                          : (item.size - msg) / showSpeed;
+                      console.log(speed, remain);
                       store.commit("cep/setListProgressAdd1", {
                         name: item.name,
                         value: percent * 100,
                       });
 
+                      store.commit("cep/setListSpeed", {
+                        name: item.name,
+                        value: (showSpeed / 1024 / 1024).toFixed(2),
+                      });
+
+                      store.commit("cep/setListRemain", {
+                        name: item.name,
+                        value: remain,
+                      });
+
                       if (percent === 1 || msg == -2) {
-                        sseClient.disconnect();
+                        // sseClient.disconnect();
+                        store.commit("cep/disconnectSSE", values[i].name);
                         // 再次下载请求
                         await cepApi.fetchDownload({
                           md5: item.md5,

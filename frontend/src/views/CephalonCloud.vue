@@ -17,7 +17,7 @@
       </h2>
     </div>
 
-    <copy-files :list="currentProgresses" :progress="progress" />
+    <copy-files :list="currentProgresses" />
   </div>
 </template>
 
@@ -65,6 +65,8 @@ export default {
       let list = Object.keys(this.cep.list).map((name) => ({
         name,
         process: this.cep.list[name]?.process,
+        speed: this.cep.list[name]?.speed,
+        remain: this.cep.list[name]?.remain,
       }));
       return list;
     },
@@ -80,13 +82,6 @@ export default {
       if (value === true) {
         this.fetchData();
       }
-    },
-    list: {
-      handler: function (value) {
-        console.log(2, value);
-      },
-      immediate: true,
-      deep: true,
     },
   },
 
@@ -166,6 +161,7 @@ export default {
                     value: 100,
                   });
                 else if (res.status === 302) {
+                  let speedBox = [];
                   // 开启获取进度
                   await new Promise((resolve) => {
                     let sseClient = this.$sse.create({
@@ -174,7 +170,18 @@ export default {
                       withCredentials: true,
                       polyfill: true,
                     });
-                    sseClient.connect().then((sse) => {
+                    let timer = setInterval(() => {
+                      // 设置一个定时循环检测此进度条是否被删除，如果传输中被删除，则结束并进行下一个
+                      // 为什么一定要在这里disconnect：如果在CopyFiles断开连接，则这边的onMessage不会触发
+                      // 则无法resolve，会卡在这里，不会执行下一次循环
+                      if (!this.cep.list[values[i].name]) {
+                        sseClient.disconnect();
+                        clearInterval(timer);
+                        resolve();
+                      }
+                    }, 2000);
+
+                    sseClient.connect().then(() => {
                       store.commit("cep/setListItemSSE", {
                         name: item.name,
                         sse: sseClient,
@@ -182,19 +189,47 @@ export default {
 
                       // 建立连接 onmessage
                       sseClient.on("message", async (msg) => {
+                        let speed =
+                          Math.abs(
+                            msg -
+                              (this.cep.list[item.name].process / 100) *
+                                item.size
+                          ) / 2;
+                        if (speedBox.length == 5) speedBox.shift();
+                        speedBox.push(speed);
+                        let showSpeed;
+                        let sum = 0;
+                        speedBox.forEach((item) => {
+                          sum += item;
+                        });
+                        showSpeed = sum / speedBox.length;
                         let percent = msg / item.size;
-
+                        let remain =
+                          (item.size - msg) / showSpeed < 0
+                            ? 0
+                            : (item.size - msg) / showSpeed;
                         store.commit("cep/setListProgressAdd1", {
                           name: item.name,
                           value: percent * 100,
                         });
 
+                        store.commit("cep/setListSpeed", {
+                          name: item.name,
+                          value: (showSpeed / 1024 / 1024).toFixed(2),
+                        });
+
+                        store.commit("cep/setListRemain", {
+                          name: item.name,
+                          value: remain,
+                        });
+
                         if (percent === 1 || msg == -2) {
-                          sseClient.disconnect();
+                          // sseClient.disconnect();
+                          store.commit("cep/disconnectSSE", values[i].name);
                           // 再次下载请求
                           await cepApi.fetchDownload({
                             md5: item.md5,
-                            target: target_path,
+                            target: item.target,
                             filename: item.name,
                           });
                           resolve();
