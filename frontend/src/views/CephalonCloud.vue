@@ -48,6 +48,7 @@ export default {
       error: null,
       // speedMbyte: 0,
       // eta: 0,
+      max: 2,
     };
   },
   computed: {
@@ -67,6 +68,7 @@ export default {
         process: this.cep.list[name]?.process,
         speed: this.cep.list[name]?.speed,
         remain: this.cep.list[name]?.remain,
+        lastLoad: this.cep.list[name]?.lastLoad,
       }));
       return list;
     },
@@ -132,8 +134,11 @@ export default {
       }
     },
     // 刷新重新下载未完成的
+    // 通道被占用的数量就是当前list中process>0的，sort（A,B=>b.process-a.process）
+    // 排序之后自然就会先请求已经占用通道的，就不会导致同时salve下载的文件过多，之后就是递归的逻辑
     async checkLoadList() {
       try {
+        let flag = false;
         // 判断在local是否存有未完成请求
         let tempList = localStorage.getItem("list");
         // 若有
@@ -142,28 +147,64 @@ export default {
           // 存入vuex
           store.commit("cep/setList", tempList);
           // 循环请求每一个
-          const values = Object.values(tempList);
-          store.commit("cep/setCanStop", true);
-          for (let i = 0; i < values.length; i++) {
-            const item = values[i];
-            if (this.cep.list[values[i].name]) {
-              const res = await cepApi.fetchDownload({
-                md5: item.md5,
-                target: item.target,
-                filename: item.name,
-              });
-
+          let values = Object.values(this.cep.list).sort(
+            (a, b) => b.process - a.process
+          );
+          // 有未下载的，且通道大于0
+          while (values.length > 0 && this.max > 0) {
+            values = Object.values(this.cep.list).sort(
+              (a, b) => b.process - a.process
+            );
+            store.commit("cep/setCanStop", true);
+            for (let i = 0; i < values.length && this.max > 0; i++) {
+              flag = false;
+              const item = values[i];
               if (this.cep.list[values[i].name]) {
-                // 正常201完成 设置进度到100
-                if (res.status === 201)
-                  store.commit("cep/setListProgressAdd1", {
-                    name: item.name,
-                    value: 100,
-                  });
-                else if (res.status === 302) {
-                  let speedBox = [];
-                  // 开启获取进度
-                  await new Promise((resolve) => {
+                this.max--;
+                const res = cepApi.fetchDownload({
+                  // const res = await cepApi.fetchDownload({
+                  md5: item.md5,
+                  target: item.target,
+                  filename: item.name,
+                });
+
+                if (this.cep.list[values[i].name]) {
+                  // 正常201完成 设置进度到100
+                  if ((await res).status === 201) {
+                    this.max++;
+                    store.commit("cep/setListProgressAdd1", {
+                      name: item.name,
+                      value: 100,
+                    });
+                    // setTimeout(() => {
+                    store.commit("cep/deleteListItem", item.name);
+                    local.deleteListItem(item.name);
+                    // this.max++;
+                    let values = Object.values(this.cep.list).filter(
+                      (item) => item.process == 0
+                    );
+
+                    if (JSON.stringify(this.cep.list) === "{}") {
+                      // 关闭进度对象展示
+                      store.commit("cep/setCanStop", false);
+                      // 清空VUEX中的进度条对象
+                      store.commit("cep/setList", {});
+
+                      // 提示成功
+                      // flag用作控制提示是否弹出成功 当出现404时且该次请求是最后一条 则不现实成功提示 避免歧义
+                      // 每次请求会将flag赋值为false 404将赋值为true
+                      if (!flag)
+                        this.$showSuccess(this.$t("success.filesCopied"));
+                    }
+                    if (values.length > 0 && this.max == 1) {
+                      this.cepDownload();
+                    }
+                    // }, 100);
+                  } else if ((await res).status === 302) {
+                    local.changeListItemstatus(item.name);
+                    let speedBox = [];
+                    // 开启获取进度
+                    // await new Promise((resolve) => {
                     let sseClient = this.$sse.create({
                       url: `${baseURL}/api/cd/download/size?stream=${item.md5}`,
                       format: "json",
@@ -177,7 +218,7 @@ export default {
                       if (!this.cep.list[values[i].name]) {
                         sseClient.disconnect();
                         clearInterval(timer);
-                        resolve();
+                        // resolve();
                       }
                     }, 2000);
 
@@ -190,11 +231,8 @@ export default {
                       // 建立连接 onmessage
                       sseClient.on("message", async (msg) => {
                         let speed =
-                          Math.abs(
-                            msg -
-                              (this.cep.list[item.name].process / 100) *
-                                item.size
-                          ) / 2;
+                          Math.abs(msg - this.cep.list[item.name]?.lastLoad) /
+                          2;
                         if (speedBox.length == 5) speedBox.shift();
                         speedBox.push(speed);
                         let showSpeed;
@@ -208,6 +246,10 @@ export default {
                           (item.size - msg) / showSpeed < 0
                             ? 0
                             : (item.size - msg) / showSpeed;
+                        store.commit("cep/setListLastLoad", {
+                          name: item.name,
+                          value: msg,
+                        });
                         store.commit("cep/setListProgressAdd1", {
                           name: item.name,
                           value: percent * 100,
@@ -232,27 +274,50 @@ export default {
                             target: item.target,
                             filename: item.name,
                           });
-                          resolve();
+                          // 然后从loadList中删除
+                          setTimeout(() => {
+                            store.commit("cep/deleteListItem", item.name);
+                            local.deleteListItem(item.name);
+                            this.max++;
+                            let values = Object.values(this.cep.list).filter(
+                              (item) => item.process == 0
+                            );
+
+                            if (JSON.stringify(this.cep.list) === "{}") {
+                              // 关闭进度对象展示
+                              store.commit("cep/setCanStop", false);
+                              // 清空VUEX中的进度条对象
+                              store.commit("cep/setList", {});
+
+                              // 提示成功
+                              // flag用作控制提示是否弹出成功 当出现404时且该次请求是最后一条 则不现实成功提示 避免歧义
+                              // 每次请求会将flag赋值为false 404将赋值为true
+                              if (!flag)
+                                this.$showSuccess(
+                                  this.$t("success.filesCopied")
+                                );
+                            }
+                            if (values.length > 0 && this.max == 1) {
+                              this.cepDownload();
+                            }
+                          }, 100);
+                          clearInterval(timer);
+                          // resolve();
                         }
                       });
                     });
-                  });
-                }
-
-                // 然后从loadList中删除
-                setTimeout(() => {
-                  store.commit("cep/deleteListItem", item.name);
-                  local.deleteListItem(item.name);
-                  if (JSON.stringify(this.cep.list) === "{}") {
-                    // 关闭进度对象展示
-                    store.commit("cep/setCanStop", false);
-                    // // 清空VUEX中的进度条对象
-                    store.commit("cep/setList", {});
-
-                    // // 提示成功
-                    this.$showSuccess(this.$t("success.filesCopied"));
+                    // });
+                  } else if (res.status === 404) {
+                    this.$showError(
+                      {
+                        message:
+                          item.name + ": " + res.status + " " + res.statusText,
+                      },
+                      false
+                    );
+                    flag = true;
                   }
-                }, 100);
+                }
               }
             }
           }

@@ -20,7 +20,7 @@
 }
 
 .upload-files .file .file-name .download-status{
-  position: absolute;
+  /* position: absolute; */
   display: flex;
   flex-direction: column;
   top: 1.5em;

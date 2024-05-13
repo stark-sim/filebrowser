@@ -18,6 +18,12 @@ const mutations = {
       state.list[value.name].process = value.value;
     }
   },
+  setListLastLoad: (state, value) => {
+    console.log("???");
+    if (state.list[value.name]) {
+      state.list[value.name].lastLoad = value.value;
+    }
+  },
   setListSpeed: (state, value) => {
     if (state.list[value.name]) {
       state.list[value.name].speed = value.value;
