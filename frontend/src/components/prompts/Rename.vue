@@ -13,6 +13,7 @@
         class="input input--block"
         v-focus
         type="text"
+        :disabled="btnLoading"
         @keyup.enter="submit"
         v-model.trim="name"
       />
@@ -29,6 +30,7 @@
       </button>
       <button
         @click="submit"
+        :disabled="btnLoading"
         class="button button--flat"
         type="submit"
         :aria-label="$t('buttons.rename')"
@@ -50,6 +52,7 @@ export default {
   data: function () {
     return {
       name: "",
+      btnLoading: false,
     };
   },
   created() {
@@ -89,7 +92,9 @@ export default {
         url.removeLastDir(oldLink) + "/" + encodeURIComponent(this.name);
 
       try {
+        this.btnLoading = true;
         await api.move([{ from: oldLink, to: newLink }]);
+        this.btnLoading = false;
         if (!this.isListing) {
           this.$router.push({ path: newLink });
           return;
