@@ -11,7 +11,7 @@
 
     <div
       class="card-action"
-      style="display: flex; align-items: center; justify-content: space-between;"
+      style="display: flex; align-items: center; justify-content: space-between"
     >
       <template v-if="user.perm.create">
         <button
@@ -19,7 +19,7 @@
           @click="$refs.fileList.createDir()"
           :aria-label="$t('sidebar.newFolder')"
           :title="$t('sidebar.newFolder')"
-          style="justify-self: left;"
+          style="justify-self: left"
         >
           <span>{{ $t("sidebar.newFolder") }}</span>
         </button>
@@ -36,7 +36,7 @@
         <button
           class="button button--flat"
           @click="move"
-          :disabled="$route.path === dest"
+          :disabled="$route.path === dest || btnLoading"
           :aria-label="$t('buttons.move')"
           :title="$t('buttons.move')"
         >
@@ -61,11 +61,13 @@ export default {
     return {
       current: window.location.pathname,
       dest: null,
+      btnLoading: false,
     };
   },
   computed: mapState(["req", "selected", "user"]),
   methods: {
     move: async function (event) {
+      this.btnLoading = true;
       event.preventDefault();
       let items = [];
 
@@ -115,6 +117,7 @@ export default {
       }
 
       action(overwrite, rename);
+      this.btnLoading = false;
     },
   },
 };

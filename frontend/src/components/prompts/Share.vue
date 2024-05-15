@@ -85,6 +85,7 @@
             type="number"
             max="2147483647"
             min="1"
+            :disabled="btnLoading"
             @keyup.enter="submit"
             v-model.trim="time"
           />
@@ -114,6 +115,7 @@
         </button>
         <button
           class="button button--flat button--blue"
+          :disabled="btnLoading"
           @click="submit"
           :aria-label="$t('buttons.share')"
           :title="$t('buttons.share')"
@@ -141,6 +143,7 @@ export default {
       clip: null,
       password: "",
       listing: true,
+      btnLoading: false,
     };
   },
   computed: {
@@ -187,13 +190,13 @@ export default {
 
       try {
         let res = null;
-
+        this.btnLoading = true;
         if (isPermanent) {
           res = await api.create(this.url, this.password);
         } else {
           res = await api.create(this.url, this.password, this.time, this.unit);
         }
-
+        this.btnLoading = false;
         this.links.push(res);
         this.sort();
 

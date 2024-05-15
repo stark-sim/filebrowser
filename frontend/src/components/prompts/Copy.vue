@@ -40,6 +40,7 @@
         </button>
         <button
           class="button button--flat"
+          :disabled="btnLoading"
           @click="copyByType"
           :aria-label="$t('buttons.copy')"
           :title="$t('buttons.copy')"
@@ -69,6 +70,7 @@ export default {
       current: window.location.pathname,
       dest: null,
       max: 2,
+      btnLoading: false,
     };
   },
   computed: {
@@ -79,6 +81,7 @@ export default {
   },
   methods: {
     copyByType(event) {
+      this.btnLoading = true;
       event.preventDefault();
       if (this.handlingType === "BaiduNetdisk") {
         this.bdDownload();
@@ -87,6 +90,7 @@ export default {
       } else {
         this.copy();
       }
+      this.btnLoading = false;
     },
     cepDownload: async function () {
       try {

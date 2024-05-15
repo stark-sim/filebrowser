@@ -18,6 +18,7 @@
         {{ $t("buttons.cancel") }}
       </button>
       <button
+        :disabled="btnLoading"
         @click="submit"
         class="button button--flat button--red"
         :aria-label="$t('buttons.delete')"
@@ -36,6 +37,11 @@ import buttons from "@/utils/buttons";
 
 export default {
   name: "delete",
+  data: () => {
+    return {
+      btnLoading: false,
+    };
+  },
   computed: {
     ...mapGetters(["isListing", "selectedCount", "currentPrompt"]),
     ...mapState(["req", "selected"]),
@@ -46,6 +52,7 @@ export default {
       buttons.loading("delete");
 
       try {
+        this.btnLoading = true;
         if (!this.isListing) {
           await api.remove(this.$route.path);
           buttons.success("delete");
@@ -56,7 +63,7 @@ export default {
         }
 
         this.closeHovers();
-
+        this.btnLoading = false;
         if (this.selectedCount === 0) {
           return;
         }
