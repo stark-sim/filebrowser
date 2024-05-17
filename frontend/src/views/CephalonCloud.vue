@@ -150,17 +150,27 @@ export default {
           let values = Object.values(this.cep.list).sort(
             (a, b) => b.process - a.process
           );
-          // 有未下载的，且通道大于0
-          while (values.length > 0 && this.max > 0) {
+          const download = async () => {
             values = Object.values(this.cep.list).sort(
               (a, b) => b.process - a.process
             );
+            // 有未下载的，且通道大于0
+            // 只有一个未下载完成的情况下，会请求两次，因为满足通道，直到2被终止
+            // while (values.length > 0 && this.cep.max > 0) {
+            //   values = Object.values(this.cep.list).sort(
+            //     (a, b) => b.process - a.process
+            //   );
             store.commit("cep/setCanStop", true);
-            for (let i = 0; i < values.length && this.max > 0; i++) {
+            for (let i = 0; i < values.length && this.cep.max > 0; i++) {
               flag = false;
               const item = values[i];
-              if (this.cep.list[values[i].name]) {
-                this.max--;
+
+              if (this.cep.list[item.name] && !this.cep.list[item.name].sse) {
+                store.commit("cep/changeMax", this.cep.max - 1);
+                store.commit("cep/setListProgressAdd1", {
+                  name: item.name,
+                  value: 0.01,
+                });
                 const res = cepApi.fetchDownload({
                   // const res = await cepApi.fetchDownload({
                   md5: item.md5,
@@ -171,7 +181,7 @@ export default {
                 if (this.cep.list[values[i].name]) {
                   // 正常201完成 设置进度到100
                   if ((await res).status === 201) {
-                    this.max++;
+                    store.commit("cep/changeMax", this.cep.max + 1);
                     store.commit("cep/setListProgressAdd1", {
                       name: item.name,
                       value: 100,
@@ -196,8 +206,8 @@ export default {
                       if (!flag)
                         this.$showSuccess(this.$t("success.filesCopied"));
                     }
-                    if (values.length > 0 && this.max == 1) {
-                      this.cepDownload();
+                    if (values.length > 0 && this.cep.max == 1) {
+                      download();
                     }
                     // }, 100);
                   } else if ((await res).status === 302) {
@@ -215,7 +225,11 @@ export default {
                       // 设置一个定时循环检测此进度条是否被删除，如果传输中被删除，则结束并进行下一个
                       // 为什么一定要在这里disconnect：如果在CopyFiles断开连接，则这边的onMessage不会触发
                       // 则无法resolve，会卡在这里，不会执行下一次循环
-                      if (!this.cep.list[values[i].name]) {
+                      if (!this.cep.list[item.name]) {
+                        store.commit("cep/changeMax", this.cep.max + 1);
+                        if (values.length > 0 && this.cep.max == 1) {
+                          download();
+                        }
                         sseClient.disconnect();
                         clearInterval(timer);
                         // resolve();
@@ -267,7 +281,7 @@ export default {
 
                         if (percent === 1 || msg == -2) {
                           // sseClient.disconnect();
-                          store.commit("cep/disconnectSSE", values[i].name);
+                          store.commit("cep/disconnectSSE", item.name);
                           // 再次下载请求
                           await cepApi.fetchDownload({
                             md5: item.md5,
@@ -277,8 +291,9 @@ export default {
                           // 然后从loadList中删除
                           setTimeout(() => {
                             store.commit("cep/deleteListItem", item.name);
+                            clearInterval(timer);
                             local.deleteListItem(item.name);
-                            this.max++;
+                            store.commit("cep/changeMax", this.cep.max + 1);
                             let values = Object.values(this.cep.list).filter(
                               (item) => item.process == 0
                             );
@@ -297,11 +312,11 @@ export default {
                                   this.$t("success.filesCopied")
                                 );
                             }
-                            if (values.length > 0 && this.max == 1) {
-                              this.cepDownload();
+                            if (values.length > 0 && this.cep.max == 1) {
+                              download();
                             }
                           }, 100);
-                          clearInterval(timer);
+
                           // resolve();
                         }
                       });
@@ -320,7 +335,10 @@ export default {
                 }
               }
             }
-          }
+            // }
+          };
+
+          download();
         }
       } catch (e) {
         console.log(e);

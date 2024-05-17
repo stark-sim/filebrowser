@@ -3,7 +3,7 @@ const state = {
   user: null,
   req: {},
   refreshCopy: false,
-
+  max: 2,
   list: {},
   canStop: false,
 };
@@ -19,7 +19,6 @@ const mutations = {
     }
   },
   setListLastLoad: (state, value) => {
-    console.log("???");
     if (state.list[value.name]) {
       state.list[value.name].lastLoad = value.value;
     }
@@ -46,8 +45,11 @@ const mutations = {
     state.list = Object.assign({}, state.list);
   },
   disconnectSSE: (state, value) => {
-    console.log(Object.values(state.list));
+    console.log(Object.values(state.list), "12312312312");
     if (state.list[value]?.sse) state.list[value]?.sse?.disconnect();
+  },
+  changeMax: (state, value) => {
+    state.max = value;
   },
 };
 

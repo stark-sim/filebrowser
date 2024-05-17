@@ -69,7 +69,6 @@ export default {
     return {
       current: window.location.pathname,
       dest: null,
-      max: 2,
       btnLoading: false,
     };
   },
@@ -134,7 +133,11 @@ export default {
         // 将进度条对象放到vuex
         store.commit("cep/setList", loadList);
         // 存储到本地
-        localStorage.setItem("list", JSON.stringify(loadList));
+        let tempObject = JSON.parse(JSON.stringify(loadList));
+        Object.keys(tempObject).forEach((key) => (tempObject[key].sse = null));
+
+        localStorage.setItem("list", JSON.stringify(tempObject));
+
         // 关闭弹窗
         this.$store.commit("closeHovers");
         // 取消选中
@@ -148,17 +151,23 @@ export default {
           (item) => item.process == 0
         );
         // 有未下载的，且通道大于0
-        while (values.length > 0 && this.max > 0) {
+
+        while (values.length > 0 && this.cep.max > 0) {
           values = Object.values(this.cep.list).filter(
             (item) => item.process == 0
           );
           // 循环请求values里的，有max就占用，没有直接break
           // 302跑完之后，max++，重新获取values，若values的大小大于零且，max===1则，（条件代表，仍有未下载的文件且通道直到这次请求完成前是全被占用的）递归cepDownload
-          for (let i = 0; i < values.length && this.max > 0; i++) {
+          for (let i = 0; i < values.length && this.cep.max > 0; i++) {
             flag = false;
             const item = values[i];
             if (this.cep.list[values[i].name]) {
-              this.max--;
+              store.commit("cep/changeMax", this.cep.max - 1);
+
+              store.commit("cep/setListProgressAdd1", {
+                name: item.name,
+                value: 0.01,
+              });
               const res = cepApi.fetchDownload({
                 md5: item.md5,
                 target: target_path,
@@ -167,7 +176,7 @@ export default {
               if (this.cep.list[values[i].name]) {
                 // 正常201完成 设置进度到100
                 if ((await res).status === 201) {
-                  this.max++;
+                  store.commit("cep/changeMax", this.cep.max + 1);
                   store.commit("cep/setListProgressAdd1", {
                     name: item.name,
                     value: 100,
@@ -179,7 +188,6 @@ export default {
                   // setTimeout(() => {
                   // store.commit("cep/deleteListItem", item.name);
                   local.deleteListItem(item.name);
-                  // this.max++;
 
                   if (JSON.stringify(this.cep.list) === "{}") {
                     // 关闭进度对象展示
@@ -193,7 +201,7 @@ export default {
                     if (!flag)
                       this.$showSuccess(this.$t("success.filesCopied"));
                   }
-                  if (values.length > 0 && this.max == 1) {
+                  if (values.length > 0 && this.cep.max == 1) {
                     this.cepDownload();
                   }
                   // }, 100);
@@ -212,7 +220,11 @@ export default {
                     // 设置一个定时循环检测此进度条是否被删除，如果传输中被删除，则结束并进行下一个
                     // 为什么一定要在这里disconnect：如果在CopyFiles断开连接，则这边的onMessage不会触发
                     // 则无法resolve，会卡在这里，不会执行下一次循环
-                    if (!this.cep.list[values[i].name]) {
+                    if (!this.cep.list[item.name]) {
+                      store.commit("cep/changeMax", this.cep.max + 1);
+                      if (values.length > 0 && this.cep.max == 1) {
+                        this.cepDownload();
+                      }
                       sseClient.disconnect();
                       clearInterval(timer);
                       // resolve();
@@ -227,7 +239,6 @@ export default {
                     sseClient.on("message", async (msg) => {
                       let speed =
                         Math.abs(msg - this.cep.list[item.name]?.lastLoad) / 2;
-                      console.log(msg, this.cep.list[item.name].process / 100);
                       if (speedBox.length == 5) speedBox.shift();
                       speedBox.push(speed);
                       let showSpeed;
@@ -262,8 +273,7 @@ export default {
                       });
 
                       if (percent === 1 || msg == -2) {
-                        // sseClient.disconnect();
-                        store.commit("cep/disconnectSSE", values[i].name);
+                        store.commit("cep/disconnectSSE", item.name);
                         clearInterval(timer);
                         // 再次下载请求
                         await cepApi.fetchDownload({
@@ -275,7 +285,7 @@ export default {
                         setTimeout(() => {
                           store.commit("cep/deleteListItem", item.name);
                           local.deleteListItem(item.name);
-                          this.max++;
+                          store.commit("cep/changeMax", this.cep.max + 1);
                           let values = Object.values(this.cep.list).filter(
                             (item) => item.process == 0
                           );
@@ -292,7 +302,7 @@ export default {
                             if (!flag)
                               this.$showSuccess(this.$t("success.filesCopied"));
                           }
-                          if (values.length > 0 && this.max == 1) {
+                          if (values.length > 0 && this.cep.max == 1) {
                             this.cepDownload();
                           }
                         }, 100);
