@@ -4,18 +4,21 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 	// "icode.baidu.com/baidu/xpan/go-sdk/xpan/utils"
 )
 
-const KB = 1024
-const MB = 1024 * KB
+const (
+	KB = 1024
+	MB = 1024 * KB
+)
 
 var queueChannel = make(chan struct{}, runtime.NumCPU())
 
@@ -63,7 +66,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		for i := 0; uint64(i) <= sum; i++ {
 			filename := path + "tmp/" + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
 			tmpFile, err2 := os.Open(filename)
-			//使用匿名函数，defer确保关闭文件
+			// 使用匿名函数，defer确保关闭文件
 			func() {
 				defer tmpFile.Close()
 				if err2 != nil {
@@ -143,7 +146,6 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	}
 
 	body, statusCode, err := Do2HTTPRequest(uri, nil, headers)
-	defer body.Close()
 	if err != nil {
 		logrus.Error(err)
 		logrus.Info("开始重新下载文件,下载编号: ", index, " 重载次数: ", restart)
@@ -155,6 +157,7 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg)
 		return
 	}
+	defer body.Close()
 
 	if statusCode != 200 && statusCode != 206 {
 		logrus.Error(err)
@@ -170,12 +173,12 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	}
 	// 下载数据输出到名“outputFilename”的文件
 	file, err := os.OpenFile(tp, os.O_WRONLY|os.O_CREATE, 0666)
-	defer file.Close()
 	write := bufio.NewWriterSize(file, 10*MB)
 	_, err = write.ReadFrom(body)
 	if err != nil {
 		return
 	}
+	defer file.Close()
 	err = write.Flush()
 	if err != nil {
 		return
