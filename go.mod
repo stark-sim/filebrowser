@@ -3,6 +3,7 @@ module github.com/filebrowser/filebrowser/v2
 go 1.20
 
 require (
+	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/asdine/storm/v3 v3.2.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dsoprea/go-exif/v3 v3.0.0-20201216222538-db167117f483
@@ -14,7 +15,9 @@ require (
 	github.com/marusama/semaphore/v2 v2.5.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/panjf2000/ants v1.2.1
 	github.com/pelletier/go-toml/v2 v2.0.6
+	github.com/r3labs/sse/v2 v2.10.0
 	github.com/shirou/gopsutil/v3 v3.23.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.9.3
@@ -54,7 +57,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect

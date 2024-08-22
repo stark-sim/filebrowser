@@ -2,7 +2,6 @@ package bd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/panjf2000/ants"
 	"github.com/sirupsen/logrus"
 	// "icode.baidu.com/baidu/xpan/go-sdk/xpan/utils"
 )
@@ -19,8 +19,6 @@ const (
 	KB = 1024
 	MB = 1024 * KB
 )
-
-var queueChannel = make(chan struct{}, runtime.NumCPU())
 
 func Download(path string, accessToken string, dlink string, outputFilename string, size uint64) error {
 	uri := dlink + "&" + "access_token=" + accessToken
@@ -43,48 +41,72 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		if err != nil {
 			return err
 		}
-
+		// 创建一个协程池，协程数量
+		p, _ := ants.NewPool(4)
+		logrus.Info("CPU线程数: ", runtime.NumCPU())
 		for i := 0; uint64(i) <= sum; i++ {
 			wg.Add(1)
 			// 确保i的值在循环中不变
 			i_ := i
 			if uint64(i) == sum {
-				go doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, true, &wg)
+				p.Submit(func() {
+					doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, true, &wg)
+				})
 			} else {
-				go doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+				p.Submit(func() {
+					doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+				})
 			}
 		}
 		wg.Wait()
 		file, err := os.OpenFile(path+outputFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-		defer file.Close()
-		// 创建一个带缓冲的写入器，缓冲区大小为10MB
-		fileWriter := bufio.NewWriterSize(file, 10*MB)
 		if err != nil {
 			fmt.Printf("无法写入文件 %s: %v\n", outputFilename, err)
 			return err
 		}
+		defer file.Close()
+		// 创建一个带缓冲的写入器，缓冲区大小为10MB
+		fileWriter := bufio.NewWriterSize(file, 10*MB)
 		for i := 0; uint64(i) <= sum; i++ {
 			filename := path + "tmp/" + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
 			tmpFile, err2 := os.Open(filename)
 			// 使用匿名函数，defer确保关闭文件
 			func() {
-				defer tmpFile.Close()
 				if err2 != nil {
+					// 重试3次
 					logrus.Error(err2)
+					for j := 1; j <= 3; j++ {
+						tmpFile, err2 = os.Open(filename)
+						if err2 == nil {
+							break
+						}
+						logrus.Error(err2)
+					}
+					// 无法打开文件，重新下载改文件
+					wg.Add(1)
+					doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+					wg.Wait()
 				}
+				defer tmpFile.Close()
+
 				_, err := fileWriter.ReadFrom(tmpFile)
 				if err != nil {
-					return
-				}
-				if err != nil {
+					// 重试3次
 					logrus.Error(err)
+					for j := 1; j <= 3; j++ {
+						_, err = fileWriter.ReadFrom(tmpFile)
+						if err == nil {
+							break
+						}
+						logrus.Error(err)
+					}
 				}
-				/*go func() {
+				go func() {
 					err := os.Remove(filename)
 					if err != nil {
 						logrus.Error(err)
 					}
-				}()*/
+				}()
 			}()
 			if err != nil {
 				return err
@@ -104,8 +126,17 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		if err != nil {
 			return err
 		}
-		if statusCode != 200 {
-			return errors.New("download http fail")
+		if statusCode != 200 && statusCode != 206 {
+			// 重试3次
+			for i := 1; i <= 3; i++ {
+				body, statusCode, err = Do2HTTPRequest(uri, postBody, headers)
+				if err == nil {
+					break
+				}
+				if i == 3 {
+					return err
+				}
+			}
 		}
 
 		// 下载数据输出到名“outputFilename”的文件
@@ -122,20 +153,21 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 }
 
 func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPath string, isEnd bool, wg *sync.WaitGroup) {
-	fileInfo, err := os.Stat(tmpPath)
 	dp := downloadPath + "-" + strconv.FormatUint(index, 10)
 	tp := tmpPath + "-" + strconv.FormatUint(index, 10)
+	fileInfo, err := os.Stat(tp)
 	if err == nil && fileInfo.Size() == int64(10*MB) {
 		logrus.Info("切片文件:", dp, "已存在且完整，跳过下载此切片文件")
 		DownloadingMap.Lock()
 		DownloadingMap.m[downloadPath].Current++
 		DownloadingMap.m[downloadPath].CurrentB += 10 * MB
 		DownloadingMap.Unlock()
-		wg.Done()
+		if wg != nil {
+			wg.Done()
+		}
 		return
 	}
-	queueChannel <- struct{}{}
-	time.Sleep(time.Duration(len(queueChannel)) * 1500 * time.Millisecond)
+	time.Sleep(time.Duration(restart) * 3000 * time.Millisecond)
 	headers := map[string]string{
 		"User-Agent": "pan.baidu.com",
 	}
@@ -160,8 +192,9 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	defer body.Close()
 
 	if statusCode != 200 && statusCode != 206 {
-		logrus.Error(err)
-
+		logrus.Error("下载文件失败，http状态码: ", statusCode)
+		data, _ := io.ReadAll(body)
+		logrus.Error(string(data))
 		logrus.Info("开始重新下载文件,下载编号: ", index, " 重载次数: ", restart)
 		if restart < 3 {
 			time.Sleep(2 * time.Duration(restart) * time.Second)
@@ -173,20 +206,30 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	}
 	// 下载数据输出到名“outputFilename”的文件
 	file, err := os.OpenFile(tp, os.O_WRONLY|os.O_CREATE, 0666)
-	write := bufio.NewWriterSize(file, 10*MB)
-	_, err = write.ReadFrom(body)
 	if err != nil {
+		logrus.Error(err)
+		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg)
 		return
 	}
-	defer file.Close()
-	err = write.Flush()
+	n, err := io.Copy(file, body)
 	if err != nil {
+		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg)
+		logrus.Error(err)
 		return
 	}
-	<-queueChannel
+	if !isEnd {
+		if n != 10*MB {
+			go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg)
+			logrus.Error("下载文件失败，文件大小不对")
+			return
+		}
+	}
+
 	DownloadingMap.Lock()
 	DownloadingMap.m[downloadPath].Current++
 	DownloadingMap.m[downloadPath].CurrentB += 10 * MB
 	DownloadingMap.Unlock()
-	wg.Done()
+	if wg != nil {
+		wg.Done()
+	}
 }
