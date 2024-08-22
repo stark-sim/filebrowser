@@ -68,27 +68,35 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		// 创建一个带缓冲的写入器，缓冲区大小为10MB
 		fileWriter := bufio.NewWriterSize(file, 10*MB)
 		for i := 0; uint64(i) <= sum; i++ {
-			filename := path + "tmp/" + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
-			tmpFile, err2 := os.Open(filename)
-			// 使用匿名函数，defer确保关闭文件
 			func() {
+				time1 := time.Now()
+				filename := path + "tmp/" + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
+				tmpFile, err2 := os.Open(filename)
+				// 使用匿名函数，defer确保关闭文件
 				if err2 != nil {
 					// 重试3次
 					logrus.Error(err2)
 					for j := 1; j <= 3; j++ {
+						wg.Add(1)
+						if uint64(i) == sum {
+							p.Submit(func() {
+								doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, true, &wg)
+							})
+						} else {
+							p.Submit(func() {
+								doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+							})
+						}
+						wg.Wait()
 						tmpFile, err2 = os.Open(filename)
 						if err2 == nil {
 							break
 						}
-						logrus.Error(err2)
 					}
 					// 无法打开文件，重新下载改文件
-					wg.Add(1)
-					doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
-					wg.Wait()
 				}
 				defer tmpFile.Close()
-
+				logrus.Info("读取文件: ", filename, " 耗时: ", time.Since(time1))
 				_, err := fileWriter.ReadFrom(tmpFile)
 				if err != nil {
 					// 重试3次
@@ -101,16 +109,15 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 						logrus.Error(err)
 					}
 				}
+				logrus.Info("合并文件: ", filename, " 耗时: ", time.Since(time1))
 				go func() {
 					err := os.Remove(filename)
 					if err != nil {
 						logrus.Error(err)
 					}
 				}()
+				logrus.Info("合并文件: ", filename)
 			}()
-			if err != nil {
-				return err
-			}
 		}
 		err = fileWriter.Flush()
 		if err != nil {
