@@ -3,13 +3,13 @@ package http
 import (
 	"errors"
 	"fmt"
+	"github.com/filebrowser/filebrowser/v2/utils"
+	"github.com/spf13/afero"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-
-	"github.com/spf13/afero"
 
 	"github.com/filebrowser/filebrowser/v2/files"
 )
@@ -143,7 +143,10 @@ func tusPatchHandler() handleFunc {
 		}
 
 		defer r.Body.Close()
-		bytesWritten, err := io.Copy(openFile, r.Body)
+
+		uploadBucket := utils.NewUploadBucketWriter(openFile)
+		// 限速
+		bytesWritten, err := io.Copy(uploadBucket, r.Body)
 		if err != nil {
 			return http.StatusInternalServerError, fmt.Errorf("could not write to file: %v", err)
 		}

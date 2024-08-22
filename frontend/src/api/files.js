@@ -61,7 +61,7 @@ export function download(format, ...files) {
     for (let file of files) {
       arg += removePrefix(file) + ",";
     }
-
+    console.log(arg);
     arg = arg.substring(0, arg.length - 1);
     arg = encodeURIComponent(arg);
     url += `/?files=${arg}&`;
@@ -74,8 +74,8 @@ export function download(format, ...files) {
   if (store.state.jwt) {
     url += `auth=${store.state.jwt}&`;
   }
-
-  window.open(url);
+  console.log(url);
+  window.open(url, "_blank");
 }
 
 export async function post(url, content = "", overwrite = false, onupload) {

@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/filebrowser/filebrowser/v2/utils"
 	"log"
 	"net/http"
 	"net/url"
@@ -209,6 +210,8 @@ func rawFileHandler(w http.ResponseWriter, r *http.Request, file *files.FileInfo
 	setContentDisposition(w, r, file)
 	w.Header().Add("Content-Security-Policy", `script-src 'none';`)
 	w.Header().Set("Cache-Control", "private")
-	http.ServeContent(w, r, file.Name, file.ModTime, fd)
+	downBucket := utils.NewDownloadBucketWriter(w)
+	http.ServeContent(downBucket, r, file.Name, file.ModTime, fd)
+
 	return 0, nil
 }
