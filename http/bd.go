@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/filebrowser/filebrowser/v2/bd"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/filebrowser/filebrowser/v2/bd"
+	"github.com/sirupsen/logrus"
 )
 
 var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
@@ -36,6 +37,7 @@ var bdUserInfo = func(w http.ResponseWriter, r *http.Request, d *data) (int, err
 	}
 	return 0, nil
 }
+
 var bdLogin = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 	all, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -117,6 +119,19 @@ var bdDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *data) (
 		return 0, err
 	}
 	return renderJSON(w, r, percentage)
+}
+
+var bdDeleteDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var downloadProgress bd.DownloadProgressReq
+	err := json.Unmarshal(all, &downloadProgress)
+	if err != nil {
+		logrus.Error(err)
+		return renderJSON(w, r, err)
+	}
+	downloadProgress.DeleteDownloadProgress()
+	return renderJSON(w, r, d)
 }
 
 var bdRefreshAccessToken = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {

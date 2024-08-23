@@ -96,6 +96,7 @@ func NewHandler(
 	bd.PathPrefix("/dir").Handler(monkey(bdShowDirInfo, "/api/bd/dir/")).Methods("POST")
 	bd.PathPrefix("/download").Handler(monkey(bdDownLoad, "/api/bd/download/")).Methods("POST")
 	bd.PathPrefix("/progress").Handler(monkey(bdDownloadProgress, "/api/bd/progress/")).Methods("POST")
+	bd.PathPrefix("/progress").Handler(monkey(bdDeleteDownloadProgress, "/api/bd/progress/")).Methods("DELETE")
 	bd.PathPrefix("/access-token/refresh").Handler(monkey(bdRefreshAccessToken, "/api/bd/access-token/refresh")).Methods("PUT")
 	bd.PathPrefix("/access-token").Handler(monkey(bdGetAccessToken, "/api/bd/access-token/")).Methods("GET")
 

@@ -237,3 +237,10 @@ func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error)
 	DownloadingMap.Unlock()
 	return DownloadingMap.m, nil
 }
+
+func (req DownloadProgressReq) DeleteDownloadProgress() error {
+	DownloadingMap.Lock()
+	delete(DownloadingMap.m, req.FileName)
+	DownloadingMap.Unlock()
+	return nil
+}
