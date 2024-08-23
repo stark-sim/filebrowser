@@ -10,7 +10,7 @@ Vue.use(Vuex);
 
 const state = {
   user: null,
-  req: {}, // My Files 的数据 ？todo：del
+  req: {}, // My Files 的数据
   oldReq: {},
   clipboard: {
     key: "",
