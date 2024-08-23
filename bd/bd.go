@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"sync"
+
+	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
+	"github.com/sirupsen/logrus"
 )
 
 // LoginCode 百度用户通过授权码进行登录
@@ -31,12 +32,14 @@ type Temple struct {
 	Current    int     `json:"current"`
 	CurrentB   uint64  `json:"current_b"`
 	Percentage float64 `json:"percentage"`
+	IsErr      bool    `json:"is_err"`
 }
 
 func init() {
 	configuration = openapi.NewConfiguration()
 	apiClient = openapi.NewAPIClient(configuration)
 }
+
 func (code LoginCode) VerifyCode() (string, error) {
 	ctx := context.Background()
 
@@ -47,7 +50,6 @@ func (code LoginCode) VerifyCode() (string, error) {
 	}
 	logrus.Info(resp.AccessToken)
 	return resp.GetAccessToken(), nil
-
 }
 
 type GetUserInfo struct {
@@ -138,6 +140,7 @@ func (req DownloadInfoReq) ShowDirInfo() (*string, error) {
 	}
 	return &response, nil
 }
+
 func (req DownloadInfoReq) Download(root string) error {
 	switch req.IsDir {
 	case true:
@@ -162,7 +165,7 @@ func (req DownloadInfoReq) Download(root string) error {
 		if readFileListRespBody.Errno != 0 {
 			return errors.New("出现了问题")
 		}
-		var fsIDs = make([]uint64, 0)
+		fsIDs := make([]uint64, 0)
 		for _, fileInfo := range readFileListRespBody.List {
 			fsIDs = append(fsIDs, uint64(fileInfo.FsID))
 		}
@@ -182,7 +185,7 @@ func (req DownloadInfoReq) Download(root string) error {
 				if err != nil {
 					return err
 				}
-				//确保每个goroutine都有自己的meta
+				// 确保每个goroutine都有自己的meta
 				meta_ := meta
 				go func() {
 					err := Download(fullPath, req.AccessToken, meta_.Dlink, meta_.Filename, meta_.Size)

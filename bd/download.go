@@ -31,6 +31,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 			SizeB:    size,
 			Current:  0,
 			CurrentB: 0,
+			IsErr:    false,
 		}
 		DownloadingMap.Unlock()
 
@@ -140,6 +141,9 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 				if err == nil {
 					break
 				}
+				if statusCode != 200 && statusCode != 206 {
+					continue
+				}
 				if i == 3 {
 					return err
 				}
@@ -187,6 +191,13 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	body, statusCode, err := Do2HTTPRequest(uri, nil, headers)
 	if err != nil {
 		logrus.Error(err)
+		if restart > 30 {
+			logrus.Error("下载文件失败，重试次数过多")
+			DownloadingMap.Lock()
+			DownloadingMap.m[downloadPath].IsErr = true
+			DownloadingMap.Unlock()
+			return
+		}
 		logrus.Info("开始重新下载文件,下载编号: ", index, " 重载次数: ", restart)
 		if restart < 3 {
 			time.Sleep(2 * time.Duration(restart) * time.Second)
