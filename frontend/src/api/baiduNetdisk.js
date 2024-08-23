@@ -242,6 +242,13 @@ export function fetchProgress() {
   });
 }
 
+export function deleteProgress(data) {
+  return fetchUtil("/api/bd/progress", {
+    method: "POST",
+    body: data,
+  });
+}
+
 export async function getAccessToken() {
   if (sessionStorage.getItem("bdAt")) {
     return;

@@ -123,8 +123,8 @@ function isTusSupported() {
   return tus.isSupported === true;
 }
 
-function computeETA(state) {
-  if (state.speedMbyte === 0) {
+function computeETA(state, speed) {
+  if (speed === 0) {
     return Infinity;
   }
   const totalSize = state.sizes.reduce((acc, size) => acc + size, 0);
@@ -133,7 +133,7 @@ function computeETA(state) {
     0
   );
   const remainingSize = totalSize - uploadedSize;
-  const speedBytesPerSecond = state.speedMbyte * 1024 * 1024;
+  const speedBytesPerSecond = speed * 1024 * 1024;
   return remainingSize / speedBytesPerSecond;
 }
 
@@ -148,7 +148,7 @@ function computeGlobalSpeedAndETA() {
 
   if (totalCount === 0) return { speed: 0, eta: Infinity };
 
-  const averageSpeed = totalSpeed / totalCount;
+  const averageSpeed = totalSpeed; // 每个文件上传的速度之和，无需再除以文件数
   const averageETA = computeETA(store.state.upload, averageSpeed);
 
   return { speed: averageSpeed, eta: averageETA };

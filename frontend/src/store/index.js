@@ -4,13 +4,13 @@ import mutations from "./mutations";
 import getters from "./getters";
 import upload from "./modules/upload";
 import bd from "./modules/baiduNetdisk";
-import cep from "./modules/cephalonCloud"
+import cep from "./modules/cephalonCloud";
 
 Vue.use(Vuex);
 
 const state = {
   user: null,
-  req: {},
+  req: {}, // My Files 的数据 ？todo：del
   oldReq: {},
   clipboard: {
     key: "",
@@ -24,7 +24,7 @@ const state = {
   multiple: false,
   prompts: [],
   showShell: false,
-  handlingType: "", // 识别我的文件（本地）或百度网盘
+  handlingType: "", // 识别我的文件（本地）或百度网盘或者端脑云空间
 };
 
 export default new Vuex.Store({
@@ -32,5 +32,5 @@ export default new Vuex.Store({
   state,
   getters,
   mutations,
-  modules: { upload, bd ,cep},
+  modules: { upload, bd, cep },
 });

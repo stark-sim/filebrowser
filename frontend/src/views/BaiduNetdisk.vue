@@ -83,7 +83,8 @@ export default {
     return {
       error: null,
       width: window.innerWidth,
-      progresses: {},
+      progresses: {}, // 所有文件的下载大小
+      errorProgressLoadings: {}, // 下载有误需要弹提示
       speedMbyte: 0,
       eta: 0,
       // tmp
@@ -113,10 +114,12 @@ export default {
       );
     },
     currentProgresses() {
-      return Object.keys(this.progresses).map((name) => ({
-        name,
-        progress: this.progresses[name].progress,
-      }));
+      return Object.keys(this.progresses)
+        .filter((name) => this.progresses[name].progress < 100)
+        .map((name) => ({
+          name: name.split("/").slice(-1)[0],
+          ...this.progresses[name],
+        }));
     },
     isMobile() {
       return this.width <= 736;
@@ -210,13 +213,36 @@ export default {
         // 从百度网盘下载到 My Files 的进度
         let progresses = {},
           copyBytes = 0,
-          totalBytes = 0;
+          totalBytes = 0,
+          count = 0;
         for (let n of names) {
-          let { percentage, size_b: size } = res[n]; // 返回的 size 是后端以 固定大小如 10MB 对文件切片后的次数
-          if (percentage >= 1) continue;
+          let { percentage, size_b: size, is_err: isError } = res[n]; // 返回的 size 是后端以 固定大小如 10MB 对文件切片后的次数
+          /**
+           * copyBytes 的计算
+           * 方式有二：
+           * 1. 累加的已复制字节数必须包括已经下载好的数据，
+           *    否则会出现当前已复制字节数 < 上一个缓存已复制字节数的情况致使出现负数速度
+           * 2. 将上一个缓存已复制字节数也减去已经下载好的数据的字节数（采用 √）
+           */
+          if (isError || percentage >= 1) {
+            const hasName = Object.keys(this.progresses).find((k) => k === n);
+            if (hasName) {
+              const { size, progress } = this.progresses[n];
+              this.prevBytes -= (size * progress) / 100;
+              if (
+                isError &&
+                !Object.keys(this.errorProgressLoadings).includes(n)
+              ) {
+                this.errorProgressLoadings[n] = false;
+                this.deleteProgress();
+              }
+            }
+            continue;
+          } else {
+            count++;
+          }
 
-          let name = n.split("/").slice(-1)[0];
-          progresses[name] = {
+          progresses[n] = {
             progress: percentage * 100,
             size,
           };
@@ -226,7 +252,7 @@ export default {
 
         this.progresses = progresses;
 
-        if (Object.keys(progresses).length > 0) {
+        if (count > 0) {
           this.hasProgress = true;
           if (!this.hasStarted) {
             this.lastTimestamp = Date.now();
@@ -255,8 +281,23 @@ export default {
         if (e.status === 502) {
           this.$showError(this.$t("errors.uploadingRetry"), false);
         } else {
-          this.$showError(e?.message || e, false);
+          this.$showError(e?.message || JSON.stringify(e), false);
         }
+      }
+    },
+    deleteProgress: async function () {
+      const names = Object.keys(this.errorProgressLoadings);
+      const key = names.find((n) => this.errorProgressLoadings[n] === false);
+      if (!key) return;
+      try {
+        await bdApi.deleteProgress({ file_name: key });
+        this.errorProgressLoadings[key] = true;
+        this.$showError(this.$t("errors.uploadingError"), false);
+        this.deleteProgress();
+      } catch (e) {
+        this.$showError(e?.message || JSON.stringify(e), false);
+      } finally {
+        this.errorProgressLoadings[key] = false;
       }
     },
     calcProgress(copyBytes, totalBytes) {
@@ -264,7 +305,7 @@ export default {
       let lastCopyBytes = copyBytes - this.prevBytes;
       let currentSpeed = lastCopyBytes / (1024 * 1024) / elapsedTime;
 
-      if (this.recentSpeeds.length >= 10) {
+      if (this.recentSpeeds.length >= 20) {
         this.recentSpeeds.shift();
       }
       this.recentSpeeds.push(currentSpeed);
