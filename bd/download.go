@@ -23,8 +23,8 @@ const (
 func Download(path string, accessToken string, dlink string, outputFilename string, size uint64) error {
 	uri := dlink + "&" + "access_token=" + accessToken
 	switch {
-	case size > 10*MB:
-		sum := size / (10 * MB)
+	case size > 100*MB:
+		sum := size / (100 * MB)
 		DownloadingMap.Lock()
 		DownloadingMap.m[path+outputFilename] = &Temple{
 			Size:     int(sum + 1),
@@ -42,7 +42,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 			return err
 		}
 		// 创建一个协程池，协程数量
-		p, _ := ants.NewPool(4)
+		p, _ := ants.NewPool(2)
 		logrus.Info("CPU线程数: ", runtime.NumCPU())
 		for i := 0; uint64(i) <= sum; i++ {
 			wg.Add(1)
@@ -66,7 +66,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		}
 		defer file.Close()
 		// 创建一个带缓冲的写入器，缓冲区大小为10MB
-		fileWriter := bufio.NewWriterSize(file, 10*MB)
+		fileWriter := bufio.NewWriterSize(file, 100*MB)
 		for i := 0; uint64(i) <= sum; i++ {
 			func() {
 				time1 := time.Now()
@@ -163,11 +163,11 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	dp := downloadPath + "-" + strconv.FormatUint(index, 10)
 	tp := tmpPath + "-" + strconv.FormatUint(index, 10)
 	fileInfo, err := os.Stat(tp)
-	if err == nil && fileInfo.Size() == int64(10*MB) {
+	if err == nil && fileInfo.Size() == int64(100*MB) {
 		logrus.Info("切片文件:", dp, "已存在且完整，跳过下载此切片文件")
 		DownloadingMap.Lock()
 		DownloadingMap.m[downloadPath].Current++
-		DownloadingMap.m[downloadPath].CurrentB += 10 * MB
+		DownloadingMap.m[downloadPath].CurrentB += 100 * MB
 		DownloadingMap.Unlock()
 		if wg != nil {
 			wg.Done()
@@ -179,9 +179,9 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		"User-Agent": "pan.baidu.com",
 	}
 	if isEnd {
-		headers["Range"] = "bytes=" + strconv.FormatUint(10*MB*index, 10) + "-"
+		headers["Range"] = "bytes=" + strconv.FormatUint(100*MB*index, 10) + "-"
 	} else {
-		headers["Range"] = "bytes=" + strconv.FormatUint(10*MB*index, 10) + "-" + strconv.FormatUint(10*MB*(index+1)-1, 10)
+		headers["Range"] = "bytes=" + strconv.FormatUint(100*MB*index, 10) + "-" + strconv.FormatUint(100*MB*(index+1)-1, 10)
 	}
 
 	body, statusCode, err := Do2HTTPRequest(uri, nil, headers)
@@ -234,7 +234,7 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 
 	DownloadingMap.Lock()
 	DownloadingMap.m[downloadPath].Current++
-	DownloadingMap.m[downloadPath].CurrentB += 10 * MB
+	DownloadingMap.m[downloadPath].CurrentB += 100 * MB
 	DownloadingMap.Unlock()
 	if wg != nil {
 		wg.Done()
