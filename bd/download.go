@@ -236,7 +236,7 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		return
 	}
 	if !isEnd {
-		if n != 10*MB {
+		if n != 100*MB {
 			go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg)
 			logrus.Error("下载文件失败，文件大小不对")
 			return
