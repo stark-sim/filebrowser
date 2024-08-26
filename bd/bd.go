@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
+	"github.com/filebrowser/filebrowser/v2/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,9 +28,7 @@ var (
 )
 
 type Temple struct {
-	Size       int     `json:"size"`
 	SizeB      uint64  `json:"size_b"`
-	Current    int     `json:"current"`
 	CurrentB   uint64  `json:"current_b"`
 	Percentage float64 `json:"percentage"`
 	IsErr      bool    `json:"is_err"`
@@ -231,8 +230,19 @@ type DownloadProgressReq struct {
 
 func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
 	DownloadingMap.Lock()
-	for _, info := range DownloadingMap.m {
-		info.Percentage = float64(info.Current) / float64(info.Size)
+	for key, info := range DownloadingMap.m {
+		if info.Percentage == 1 {
+			return DownloadingMap.m, nil
+		}
+		var err error
+		dir := filepath.Dir(key)
+		filename := filepath.Base(key)
+		tmpPath := dir + "/." + filename + "_tmp/"
+		info.CurrentB, err = utils.DirSize(tmpPath)
+		if err != nil {
+			logrus.Error(err)
+		}
+		info.Percentage = float64(info.CurrentB) / float64(info.SizeB)
 	}
 	DownloadingMap.Unlock()
 	return DownloadingMap.m, nil

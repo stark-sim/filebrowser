@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -27,9 +27,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		sum := size / (100 * MB)
 		DownloadingMap.Lock()
 		DownloadingMap.m[path+outputFilename] = &Temple{
-			Size:     int(sum + 1),
 			SizeB:    size,
-			Current:  0,
 			CurrentB: 0,
 			IsErr:    false,
 		}
@@ -38,24 +36,24 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		var wg sync.WaitGroup
 		logrus.Info("下载文件: ", outputFilename, " 共临时文件", sum)
 		// 创建临时文件夹
-		err := os.MkdirAll(path+"tmp/", os.ModePerm)
+		tmpPath := path + "." + outputFilename + "_tmp/"
+		err := os.MkdirAll(tmpPath, os.ModePerm)
 		if err != nil {
 			return err
 		}
 		// 创建一个协程池，协程数量
 		p, _ := ants.NewPool(2)
-		logrus.Info("CPU线程数: ", runtime.NumCPU())
 		for i := 0; uint64(i) <= sum; i++ {
 			wg.Add(1)
 			// 确保i的值在循环中不变
 			i_ := i
 			if uint64(i) == sum {
 				p.Submit(func() {
-					doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, true, &wg)
+					doRequest(uri, uint64(i_), 0, path+outputFilename, tmpPath, true, &wg)
 				})
 			} else {
 				p.Submit(func() {
-					doRequest(uri, uint64(i_), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+					doRequest(uri, uint64(i_), 0, path+outputFilename, tmpPath, false, &wg)
 				})
 			}
 		}
@@ -71,7 +69,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		for i := 0; uint64(i) <= sum; i++ {
 			func() {
 				time1 := time.Now()
-				filename := path + "tmp/" + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
+				filename := tmpPath + outputFilename + "-" + strconv.FormatUint(uint64(i), 10)
 				tmpFile, err2 := os.Open(filename)
 				// 使用匿名函数，defer确保关闭文件
 				if err2 != nil {
@@ -81,11 +79,11 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 						wg.Add(1)
 						if uint64(i) == sum {
 							p.Submit(func() {
-								doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, true, &wg)
+								doRequest(uri, uint64(i), 0, path+outputFilename, tmpPath, true, &wg)
 							})
 						} else {
 							p.Submit(func() {
-								doRequest(uri, uint64(i), 0, path+outputFilename, path+"tmp/"+outputFilename, false, &wg)
+								doRequest(uri, uint64(i), 0, path+outputFilename, tmpPath, false, &wg)
 							})
 						}
 						wg.Wait()
@@ -111,19 +109,29 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 					}
 				}
 				logrus.Info("合并文件: ", filename, " 耗时: ", time.Since(time1))
-				go func() {
-					err := os.Remove(filename)
-					if err != nil {
-						logrus.Error(err)
-					}
-				}()
-				logrus.Info("合并文件: ", filename)
 			}()
 		}
 		err = fileWriter.Flush()
+		// 标记下载完成
+		DownloadingMap.Lock()
+		DownloadingMap.m[path+outputFilename] = &Temple{
+			SizeB:      size,
+			CurrentB:   size,
+			Percentage: 1,
+			IsErr:      false,
+		}
+		DownloadingMap.Unlock()
+
 		if err != nil {
 			return err
 		}
+		go func() {
+			logrus.Info("删除临时文件夹: ", tmpPath)
+			err := os.RemoveAll(tmpPath)
+			if err != nil {
+				logrus.Error(err)
+			}
+		}()
 	default:
 		headers := map[string]string{
 			"User-Agent": "pan.baidu.com",
@@ -151,7 +159,7 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		}
 
 		// 下载数据输出到名“outputFilename”的文件
-		file, err := os.OpenFile(path+outputFilename, os.O_WRONLY|os.O_CREATE, 0666)
+		file, _ := os.OpenFile(path+outputFilename, os.O_WRONLY|os.O_CREATE, 0666)
 		defer file.Close()
 		write := bufio.NewWriter(file)
 		_, err = write.ReadFrom(body)
@@ -165,14 +173,11 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 
 func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPath string, isEnd bool, wg *sync.WaitGroup) {
 	dp := downloadPath + "-" + strconv.FormatUint(index, 10)
-	tp := tmpPath + "-" + strconv.FormatUint(index, 10)
+	filename := filepath.Base(downloadPath)
+	tp := tmpPath + filename + "-" + strconv.FormatUint(index, 10)
 	fileInfo, err := os.Stat(tp)
 	if err == nil && fileInfo.Size() == int64(100*MB) {
 		logrus.Info("切片文件:", dp, "已存在且完整，跳过下载此切片文件")
-		DownloadingMap.Lock()
-		DownloadingMap.m[downloadPath].Current++
-		DownloadingMap.m[downloadPath].CurrentB += 100 * MB
-		DownloadingMap.Unlock()
 		if wg != nil {
 			wg.Done()
 		}
@@ -191,7 +196,7 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 	body, statusCode, err := Do2HTTPRequest(uri, nil, headers)
 	if err != nil {
 		logrus.Error(err)
-		if restart > 30 {
+		if restart > 15 {
 			logrus.Error("下载文件失败，重试次数过多")
 			DownloadingMap.Lock()
 			DownloadingMap.m[downloadPath].IsErr = true
@@ -243,10 +248,6 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		}
 	}
 
-	DownloadingMap.Lock()
-	DownloadingMap.m[downloadPath].Current++
-	DownloadingMap.m[downloadPath].CurrentB += 100 * MB
-	DownloadingMap.Unlock()
 	if wg != nil {
 		wg.Done()
 	}
