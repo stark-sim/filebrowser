@@ -249,6 +249,7 @@ func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error)
 }
 
 func (req DownloadProgressReq) DeleteDownloadProgress() error {
+	logrus.Info("delete:" + req.FileName)
 	DownloadingMap.Lock()
 	delete(DownloadingMap.m, req.FileName)
 	DownloadingMap.Unlock()
