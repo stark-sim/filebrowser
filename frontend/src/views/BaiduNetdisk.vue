@@ -214,7 +214,8 @@ export default {
         let progresses = {},
           copyBytes = 0,
           totalBytes = 0,
-          count = 0;
+          count = 0,
+          errCount = 0;
         for (let n of names) {
           let { percentage, size_b: size, is_err: isError } = res[n]; // 返回的 size 是后端以 固定大小如 10MB 对文件切片后的次数
           /**
@@ -229,12 +230,12 @@ export default {
             if (hasName) {
               const { size, progress } = this.progresses[n];
               this.prevBytes -= (size * progress) / 100;
-              if (
-                isError &&
-                !Object.keys(this.errorProgressLoadings).includes(n)
-              ) {
-                this.errorProgressLoadings[n] = false;
-                this.deleteProgress();
+              if (isError) {
+                errCount++;
+                if (!Object.keys(this.errorProgressLoadings).includes(n)) {
+                  this.errorProgressLoadings[n] = false;
+                  this.deleteProgress();
+                }
               }
             }
             continue;
@@ -265,7 +266,12 @@ export default {
             this.fetchProgress();
             this.calcProgress(copyBytes, totalBytes);
           }, 1500);
-        } else if (this.hasProgress) {
+        } else {
+          if (this.hasProgress && errCount === 0) {
+            this.$showSuccess(this.$t("success.filesCopied"));
+          }
+
+          // 下载结束需要清除数据
           this.speedMbyte = 0;
           this.eta = 0;
           window.clearTimeout(this.timer);
@@ -274,8 +280,6 @@ export default {
           this.recentSpeeds = [];
           this.lastTimestamp = 0;
           this.prevBytes = 0;
-
-          this.$showSuccess(this.$t("success.filesCopied"));
         }
       } catch (e) {
         if (e.status === 502) {
@@ -290,14 +294,17 @@ export default {
       const key = names.find((n) => this.errorProgressLoadings[n] === false);
       if (!key) return;
       try {
-        await bdApi.deleteProgress({ file_name: key });
         this.errorProgressLoadings[key] = true;
+        await bdApi.deleteProgress({ file_name: key });
+        delete this.errorProgressLoadings[key];
         this.$showError(this.$t("errors.uploadingError"), false);
         this.deleteProgress();
       } catch (e) {
         this.$showError(e?.message || JSON.stringify(e), false);
       } finally {
-        this.errorProgressLoadings[key] = false;
+        if (this.errorProgressLoadings[key] === true) {
+          this.errorProgressLoadings[key] = false;
+        }
       }
     },
     calcProgress(copyBytes, totalBytes) {

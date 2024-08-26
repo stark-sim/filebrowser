@@ -244,7 +244,7 @@ export function fetchProgress() {
 
 export function deleteProgress(data) {
   return fetchUtil("/api/bd/progress", {
-    method: "POST",
+    method: "DELETE",
     body: data,
   });
 }
