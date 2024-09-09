@@ -280,6 +280,8 @@ import Action from "@/components/header/Action.vue";
 import Search from "@/components/Search.vue";
 import Item from "@/components/files/ListingItem.vue";
 
+const LIMIT_UPLOAD_MAX_BYTE = Math.pow(1024, 3) * 9;
+
 export default {
   name: "listing",
   components: {
@@ -720,6 +722,25 @@ export default {
           files[i].fullPath = file.webkitRelativePath;
         }
       }
+
+      let targetFiles = [];
+      // 限制单文件上传大小为 9G，超过提醒并筛选掉
+      let limitCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        let file = files[i];
+        if (file.size > LIMIT_UPLOAD_MAX_BYTE) {
+          limitCount++;
+          continue;
+        }
+        targetFiles.push(file);
+      }
+
+      if (limitCount > 0) {
+        this.$showError(this.$t("errors.limitLocalUploadSize"), false, 1500);
+      }
+
+      files = targetFiles;
+      if (files.length === 0) return;
 
       let path = this.$route.path.endsWith("/")
         ? this.$route.path

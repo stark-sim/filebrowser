@@ -52,7 +52,8 @@
     "connection": "无法连接到服务器。",
     "retry": "网络拥堵，请稍后再试。",
     "uploadingRetry": "传输出错，请刷新页面继续上传",
-    "uploadingError": "上传失败，请刷新页面后重试。支持断点续传，已传输部分无需再次上传。"
+    "uploadingError": "上传失败，请刷新页面后重试。支持断点续传，已传输部分无需再次上传。",
+    "limitLocalUploadSize": "单个文件大小限制为 9G，超过 9G 的文件请用百度网盘或端脑网盘上传。"
   },
   "files": {
     "body": "内容",

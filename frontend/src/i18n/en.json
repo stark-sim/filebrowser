@@ -56,7 +56,8 @@
     "connection": "The server can't be reached.",
     "retry": "Network congestion, please try again later.",
     "uploadingRetry": "Error in transmission. Please refresh the page to continue uploading.",
-    "uploadingError": "Upload failed. Please refresh the page and try again. Support breakpoint continuous transmission, and the transmitted part does not need to be uploaded again."
+    "uploadingError": "Upload failed. Please refresh the page and try again. Support breakpoint continuous transmission, and the transmitted part does not need to be uploaded again.",
+    "limitLocalUploadSize": "The size limit of a single file is 9G. Please upload files larger than 9G using Baidu Netdisk or Duannao Netdisk."
   },
   "files": {
     "body": "Body",
