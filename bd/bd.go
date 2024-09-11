@@ -232,6 +232,7 @@ func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error)
 	DownloadingMap.Lock()
 	for key, info := range DownloadingMap.m {
 		if info.Percentage == 1 {
+			DownloadingMap.Unlock()
 			return DownloadingMap.m, nil
 		}
 		var err error
