@@ -38,6 +38,7 @@
       :list="currentProgresses"
       :speed="speedMbyte"
       :eta="eta"
+      @resetPrevBytes="resetPrevBytes"
       @fetchProgress="fetchProgress"
     />
   </div>
@@ -95,7 +96,6 @@ export default {
       eta: 0,
       // tmp
       timer: null,
-      hasProgress: false,
       hasStarted: false,
       recentSpeeds: [],
       lastTimestamp: 0,
@@ -163,7 +163,6 @@ export default {
     },
     refreshCopy: async function (value) {
       if (value === true) {
-        this.hasProgress = true;
         await this.fetchProgress();
       }
     },
@@ -240,32 +239,24 @@ export default {
             is_err: isError,
             is_stop: isStop,
           } = res[n];
-          /**
-           * copyBytes 的计算
-           * 方式有二：
-           * 1. 累加的已复制字节数必须包括已经下载好的数据，
-           *    否则会出现当前已复制字节数 < 上一个缓存已复制字节数的情况致使出现负数速度
-           * 2. 将上一个缓存已复制字节数也减去已经下载好的数据的字节数（采用 √）
-           */
-          if (isError || percentage >= 1) {
-            const hasName = Object.keys(this.progresses).find((k) => k === n);
-            if (hasName) {
-              const { size, progress, stopped } = this.progresse[n];
-              this.prevBytes -= (size * progress) / 100;
-              if (isError && isStop && !stopped) {
-                errStopCount++;
-              } else if (percentage >= 1) {
-                if (!Object.keys(this.deleteProgresses).includes(n)) {
-                  this.deleteProgresses[n] = false;
-                  this.deleteProgress();
-                }
-                successCount++;
-              }
+
+          if (percentage >= 1) {
+            if (!Object.keys(this.deleteProgresses).includes(n)) {
+              this.deleteProgresses[n] = false;
             }
-            continue;
+            successCount++;
+          } else if (isStop) {
+            const hasName = Object.keys(this.progresses).find((k) => k === n);
+            if (
+              isError &&
+              ((hasName && !this.progresses[n].stopped) || !hasName)
+            ) {
+              errStopCount++; // 提示可以重新恢复上传
+            }
+            stopCount++;
+            count++;
           } else {
             count++;
-            if (isStop) stopCount++;
           }
 
           progresses[n] = {
@@ -278,9 +269,13 @@ export default {
         }
 
         this.progresses = progresses;
+        this.deleteProgress(); // 需要先展示再有删除
+
+        if (successCount > 0) {
+          this.$showSuccess(this.$t("success.filesCopied"));
+        }
 
         if (count > 0) {
-          this.hasProgress = true;
           if (!this.hasStarted) {
             this.lastTimestamp = Date.now();
             this.prevBytes = copyBytes;
@@ -298,15 +293,10 @@ export default {
             this.calcProgress(copyBytes, totalBytes);
           }, 1500);
         } else {
-          if (this.hasProgress && successCount > 0) {
-            this.$showSuccess(this.$t("success.filesCopied"));
-          }
-
           // 下载结束需要清除数据
           this.speedMbyte = 0;
           this.eta = 0;
           window.clearTimeout(this.timer);
-          this.hasProgress = false;
           this.hasStarted = false;
           this.recentSpeeds = [];
           this.lastTimestamp = 0;
@@ -322,6 +312,15 @@ export default {
         this.progressLoading = false;
       }
     },
+    resetPrevBytes(size, progress) {
+      /**
+       * copyBytes 的计算方式有二：
+       * 1. 累加的已复制字节数必须包括已经下载好的数据，
+       *    否则会出现当前已复制字节数 < 上一个缓存已复制字节数的情况致使出现负数速度
+       * 2. 将上一个缓存已复制字节数也减去已经下载好的数据的字节数（采用 √）
+       */
+      this.prevBytes -= (size * progress) / 100;
+    },
     deleteProgress: async function () {
       const names = Object.keys(this.deleteProgresses);
       const key = names.find((n) => this.deleteProgresses[n] === false);
@@ -329,6 +328,11 @@ export default {
       try {
         this.deleteProgresses[key] = true;
         await bdApi.deleteProgress({ file_name: key });
+        const hasName = Object.keys(this.progresses).find((k) => k === key);
+        if (hasName) {
+          const { size, progress } = this.progresses[key];
+          this.resetPrevBytes(size, progress);
+        }
         delete this.deleteProgresses[key];
         this.deleteProgress();
       } catch (e) {

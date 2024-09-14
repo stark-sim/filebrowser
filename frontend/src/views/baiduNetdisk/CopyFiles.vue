@@ -116,11 +116,12 @@ export default {
     toggle: function () {
       this.open = !this.open;
     },
-    async abortUpload({ path }) {
+    async abortUpload({ path, size, progress }) {
       if (confirm(this.$t("upload.abortUpload"))) {
         try {
           await bdApi.cancelProgress({ file_name: path });
           this.$showSuccess(this.$t("success.uploadAborted"));
+          this.$emit("resetPrevBytes", size, progress);
           this.$emit("fetchProgress");
         } catch (e) {
           this.$showError(e?.message || JSON.stringify(e), false, 1500);
@@ -130,7 +131,6 @@ export default {
     async continueUpload({ path }) {
       try {
         await bdApi.continueProgress({ file_name: path });
-        console.log("HHH");
         this.$showSuccess(this.$t("success.uploadContinued"));
         this.$emit("fetchProgress");
       } catch (e) {
