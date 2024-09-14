@@ -249,6 +249,28 @@ export function deleteProgress(data) {
   });
 }
 
+// file_name: string
+export function stopProgress(data) {
+  return fetchUtil("/api/bd/progress/stop", {
+    method: "PATCH",
+    body: data,
+  });
+}
+
+export function continueProgress(data) {
+  return fetchUtil("/api/bd/progress/restart", {
+    method: "PATCH",
+    body: data,
+  });
+}
+
+export function cancelProgress(data) {
+  return fetchUtil("/api/bd/progress/cancel", {
+    method: "PATCH",
+    body: data,
+  });
+}
+
 export async function getAccessToken() {
   if (sessionStorage.getItem("bdAt")) {
     return;

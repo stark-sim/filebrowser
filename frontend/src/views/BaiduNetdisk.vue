@@ -34,7 +34,12 @@
       </h2>
     </div>
 
-    <copy-files :list="currentProgresses" :speed="speedMbyte" :eta="eta" />
+    <copy-files
+      :list="currentProgresses"
+      :speed="speedMbyte"
+      :eta="eta"
+      @fetchProgress="fetchProgress"
+    />
   </div>
 </template>
 
@@ -83,8 +88,9 @@ export default {
     return {
       error: null,
       width: window.innerWidth,
+      progressLoading: false,
       progresses: {}, // 所有文件的下载大小
-      errorProgressLoadings: {}, // 下载有误需要弹提示
+      deleteProgresses: {}, // 删掉下载成功的文件
       speedMbyte: 0,
       eta: 0,
       // tmp
@@ -117,6 +123,7 @@ export default {
       return Object.keys(this.progresses)
         .filter((name) => this.progresses[name].progress < 100)
         .map((name) => ({
+          path: name,
           name: name.split("/").slice(-1)[0],
           ...this.progresses[name],
         }));
@@ -207,6 +214,8 @@ export default {
       this.$store.commit("bd/setRefreshCopy", false);
 
       try {
+        if (this.progressLoading) return;
+        this.progressLoading = true;
         const res = await bdApi.fetchProgress();
         const names = Object.keys(res); // 文件或文件夹
 
@@ -214,10 +223,23 @@ export default {
         let progresses = {},
           copyBytes = 0,
           totalBytes = 0,
-          count = 0,
-          errCount = 0;
+          count = 0, // 是否有正在上传/暂停的文件
+          successCount = 0, // 成功的文件
+          stopCount = 0,
+          errStopCount = 0; // 跟上一个存的暂停状态比较，上一个未暂停，但下一个错误暂停，需要提示
         for (let n of names) {
-          let { percentage, size_b: size, is_err: isError } = res[n]; // 返回的 size 是后端以 固定大小如 10MB 对文件切片后的次数
+          /**
+           * 返回字段说明：
+           * size_b 文件大小，单位 Byte
+           * is_err 判定 is_stop 是被动还是主动关闭
+           * is_small 表示为小文件，只能中断，无法暂停/恢复
+           */
+          let {
+            percentage,
+            size_b: size,
+            is_err: isError,
+            is_stop: isStop,
+          } = res[n];
           /**
            * copyBytes 的计算
            * 方式有二：
@@ -228,24 +250,28 @@ export default {
           if (isError || percentage >= 1) {
             const hasName = Object.keys(this.progresses).find((k) => k === n);
             if (hasName) {
-              const { size, progress } = this.progresses[n];
+              const { size, progress, stopped } = this.progresse[n];
               this.prevBytes -= (size * progress) / 100;
-              if (isError) {
-                errCount++;
-                if (!Object.keys(this.errorProgressLoadings).includes(n)) {
-                  this.errorProgressLoadings[n] = false;
+              if (isError && isStop && !stopped) {
+                errStopCount++;
+              } else if (percentage >= 1) {
+                if (!Object.keys(this.deleteProgresses).includes(n)) {
+                  this.deleteProgresses[n] = false;
                   this.deleteProgress();
                 }
+                successCount++;
               }
             }
             continue;
           } else {
             count++;
+            if (isStop) stopCount++;
           }
 
           progresses[n] = {
             progress: percentage * 100,
             size,
+            stopped: isStop,
           };
           copyBytes += percentage * size;
           totalBytes += size;
@@ -261,13 +287,18 @@ export default {
             this.hasStarted = true;
           }
 
+          if (errStopCount > 0) {
+            this.$showError(this.$t("errors.uploadingError"), false);
+          }
+
+          if (count === stopCount) return;
           window.clearTimeout(this.timer);
           this.timer = window.setTimeout(() => {
             this.fetchProgress();
             this.calcProgress(copyBytes, totalBytes);
           }, 1500);
         } else {
-          if (this.hasProgress && errCount === 0) {
+          if (this.hasProgress && successCount > 0) {
             this.$showSuccess(this.$t("success.filesCopied"));
           }
 
@@ -287,23 +318,24 @@ export default {
         } else {
           this.$showError(e?.message || JSON.stringify(e), false);
         }
+      } finally {
+        this.progressLoading = false;
       }
     },
     deleteProgress: async function () {
-      const names = Object.keys(this.errorProgressLoadings);
-      const key = names.find((n) => this.errorProgressLoadings[n] === false);
+      const names = Object.keys(this.deleteProgresses);
+      const key = names.find((n) => this.deleteProgresses[n] === false);
       if (!key) return;
       try {
-        this.errorProgressLoadings[key] = true;
+        this.deleteProgresses[key] = true;
         await bdApi.deleteProgress({ file_name: key });
-        delete this.errorProgressLoadings[key];
-        this.$showError(this.$t("errors.uploadingError"), false);
+        delete this.deleteProgresses[key];
         this.deleteProgress();
       } catch (e) {
         this.$showError(e?.message || JSON.stringify(e), false);
       } finally {
-        if (this.errorProgressLoadings[key] === true) {
-          this.errorProgressLoadings[key] = false;
+        if (this.deleteProgresses[key] === true) {
+          this.deleteProgresses[key] = false;
         }
       }
     },

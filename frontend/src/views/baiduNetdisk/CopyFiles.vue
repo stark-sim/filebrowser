@@ -41,11 +41,41 @@
           :data-type="file.type"
           :aria-label="file.name"
         >
-          <div class="file-name">
-            <i class="material-icons"></i> {{ file.name }}
+          <div class="content">
+            <div class="file-name" :title="file.name">
+              <i class="material-icons"></i> {{ file.name }}
+            </div>
+            <div class="file-progress">
+              <div v-bind:style="{ width: file.progress + '%' }"></div>
+            </div>
           </div>
-          <div class="file-progress">
-            <div v-bind:style="{ width: file.progress + '%' }"></div>
+          <div class="operate">
+            <button
+              class="action"
+              @click="abortUpload(file)"
+              aria-label="Abort File Upload"
+              title="Abort File Upload"
+            >
+              <i class="material-icons">{{ "cancel" }}</i>
+            </button>
+            <button
+              v-if="file.stopped"
+              class="action"
+              @click="continueUpload(file)"
+              aria-label="Continue File Upload"
+              title="Continue File Upload"
+            >
+              <i class="material-icons">{{ "play_circle" }}</i>
+            </button>
+            <button
+              v-else
+              class="action"
+              @click="stopUpload(file)"
+              aria-label="Stop File Upload"
+              title="Stop File Upload"
+            >
+              <i class="material-icons">{{ "pause_circle" }}</i>
+            </button>
           </div>
         </div>
       </div>
@@ -54,6 +84,7 @@
 </template>
 
 <script>
+import { bdApi } from "@/api";
 import buttons from "@/utils/buttons";
 
 export default {
@@ -85,6 +116,36 @@ export default {
     toggle: function () {
       this.open = !this.open;
     },
+    async abortUpload({ path }) {
+      if (confirm(this.$t("upload.abortUpload"))) {
+        try {
+          await bdApi.cancelProgress({ file_name: path });
+          this.$showSuccess(this.$t("success.uploadAborted"));
+          this.$emit("fetchProgress");
+        } catch (e) {
+          this.$showError(e?.message || JSON.stringify(e), false, 1500);
+        }
+      }
+    },
+    async continueUpload({ path }) {
+      try {
+        await bdApi.continueProgress({ file_name: path });
+        console.log("HHH");
+        this.$showSuccess(this.$t("success.uploadContinued"));
+        this.$emit("fetchProgress");
+      } catch (e) {
+        this.$showError(e?.message || JSON.stringify(e), false, 1500);
+      }
+    },
+    async stopUpload({ path }) {
+      try {
+        await bdApi.stopProgress({ file_name: path });
+        this.$showSuccess(this.$t("success.uploadStopped"));
+        this.$emit("fetchProgress");
+      } catch (e) {
+        this.$showError(e?.message || JSON.stringify(e), false, 1500);
+      }
+    },
     abortAll() {
       if (confirm(this.$t("upload.abortUpload"))) {
         buttons.done("copy");
@@ -94,3 +155,40 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.card-content .file {
+  display: flex;
+  gap: 10px;
+}
+
+.card-content .file .content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.card-content .file .content .file-name {
+  justify-content: flex-start;
+}
+
+.card-content .file .operate {
+  display: flex;
+  align-items: center;
+}
+
+.card-content .file .operate .action {
+  display: inline-flex;
+}
+
+.card-content .file .operate .action:disabled i {
+  color: gray;
+}
+
+.card-content .file .operate .action i {
+  padding: 0;
+}
+
+.card-content .file .operate .action i::before {
+  content: "";
+}
+</style>
