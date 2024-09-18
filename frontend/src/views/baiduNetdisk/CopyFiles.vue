@@ -132,7 +132,7 @@ export default {
       try {
         await bdApi.continueProgress({ file_name: path });
         this.$showSuccess(this.$t("success.uploadContinued"));
-        this.$emit("fetchProgress");
+        this.$emit("afterContinueUpload", path);
       } catch (e) {
         this.$showError(e?.message || JSON.stringify(e), false, 1500);
       }

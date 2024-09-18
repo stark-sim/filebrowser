@@ -40,6 +40,7 @@
       :eta="eta"
       @resetPrevBytes="resetPrevBytes"
       @fetchProgress="fetchProgress"
+      @afterContinueUpload="afterContinueUpload"
     />
   </div>
 </template>
@@ -248,8 +249,9 @@ export default {
           } else if (isStop) {
             const hasName = Object.keys(this.progresses).find((k) => k === n);
             if (
+              Object.keys(this.progresses).length > 0 &&
               isError &&
-              ((hasName && !this.progresses[n].stopped) || !hasName)
+              ((hasName && !this.progresses[n].hasError) || !hasName)
             ) {
               errStopCount++; // 提示可以重新恢复上传
             }
@@ -263,6 +265,7 @@ export default {
             progress: percentage * 100,
             size,
             stopped: isStop,
+            hasError: isError,
           };
           copyBytes += percentage * size;
           totalBytes += size;
@@ -283,7 +286,7 @@ export default {
           }
 
           if (errStopCount > 0) {
-            this.$showError(this.$t("errors.uploadingError"), false);
+            this.$showError(this.$t("errors.uploadingError"), false, 2000);
           }
 
           if (count === stopCount) return;
@@ -320,6 +323,12 @@ export default {
        * 2. 将上一个缓存已复制字节数也减去已经下载好的数据的字节数（采用 √）
        */
       this.prevBytes -= (size * progress) / 100;
+    },
+    afterContinueUpload(path) {
+      if (!this.progresses[path]) return;
+      this.progresses[path].stopped = false;
+      this.progresses[path].hasError = false;
+      this.fetchProgress();
     },
     deleteProgress: async function () {
       const names = Object.keys(this.deleteProgresses);
