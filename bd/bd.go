@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	openapi "github.com/filebrowser/filebrowser/v2/bd/openxpanapi"
 	"github.com/filebrowser/filebrowser/v2/utils"
@@ -28,10 +29,15 @@ var (
 )
 
 type Temple struct {
-	SizeB      uint64  `json:"size_b"`
-	CurrentB   uint64  `json:"current_b"`
-	Percentage float64 `json:"percentage"`
-	IsErr      bool    `json:"is_err"`
+	SizeB      uint64        `json:"size_b"`
+	CurrentB   uint64        `json:"current_b"`
+	Percentage float64       `json:"percentage"`
+	IsErr      bool          `json:"is_err"`
+	IsStop     bool          `json:"is_stop"`
+	IsSmall    bool          `json:"is_small"`
+	StopChan   chan struct{} `json:"-"`
+	RestarChan chan struct{} `json:"-"`
+	CancelChan chan struct{} `json:"-"`
 }
 
 func init() {
@@ -84,7 +90,6 @@ func (req GetUserInfo) GetUserInfo() (GetUserInfoResp, error) {
 		Expire:    execute.Expire,
 		Free:      execute.Free,
 	}
-	logrus.Info(resp)
 	return resp, nil
 }
 
@@ -100,7 +105,6 @@ func (req ShowDirInfoReq) ShowDirInfo() (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Info(response)
 	var respStruct struct {
 		Errno int `json:"errno"`
 	}
@@ -230,21 +234,25 @@ type DownloadProgressReq struct {
 
 func (req DownloadProgressReq) GetDownloadProgress() (map[string]*Temple, error) {
 	DownloadingMap.Lock()
+	defer DownloadingMap.Unlock()
 	for key, info := range DownloadingMap.m {
-		if info.Percentage == 1 {
+		if info.Percentage == 1 || info.IsErr || info.IsStop {
 			continue
 		}
 		var err error
-		dir := filepath.Dir(key)
-		filename := filepath.Base(key)
-		tmpPath := dir + "/." + filename + "_tmp/"
-		info.CurrentB, err = utils.DirSize(tmpPath)
+		if info.IsSmall {
+			info.CurrentB, err = utils.FileSize(key)
+		} else {
+			dir := filepath.Dir(key)
+			filename := filepath.Base(key)
+			tmpPath := dir + "/." + filename + "_tmp/"
+			info.CurrentB, err = utils.DirSize(tmpPath)
+		}
 		if err != nil {
 			logrus.Error(err)
 		}
 		info.Percentage = float64(info.CurrentB) / float64(info.SizeB)
 	}
-	DownloadingMap.Unlock()
 	return DownloadingMap.m, nil
 }
 
@@ -253,5 +261,60 @@ func (req DownloadProgressReq) DeleteDownloadProgress() error {
 	DownloadingMap.Lock()
 	delete(DownloadingMap.m, req.FileName)
 	DownloadingMap.Unlock()
+	return nil
+}
+
+func (req DownloadProgressReq) StopDownloadProgress() error {
+	logrus.Info("stop:" + req.FileName)
+	DownloadingMap.Lock()
+	defer DownloadingMap.Unlock()
+	if info, ok := DownloadingMap.m[req.FileName]; ok {
+		if info.IsStop {
+			return nil
+		}
+		info.IsStop = true
+		info.StopChan <- struct{}{}
+	} else {
+		return errors.New("not found")
+	}
+	return nil
+}
+
+func (req DownloadProgressReq) CancelDownloadProgress() error {
+	logrus.Info("cancel:" + req.FileName)
+	DownloadingMap.Lock()
+	defer DownloadingMap.Unlock()
+	if info, ok := DownloadingMap.m[req.FileName]; ok {
+		info.CancelChan <- struct{}{}
+		time.Sleep(300 * time.Millisecond)
+		if !info.IsSmall {
+			dir := filepath.Dir(req.FileName)
+			filename := filepath.Base(req.FileName)
+			tmpPath := dir + "/." + filename + "_tmp/"
+			os.RemoveAll(tmpPath)
+		} else {
+			os.Remove(req.FileName)
+		}
+		delete(DownloadingMap.m, req.FileName)
+	} else {
+		return errors.New("not found")
+	}
+	return nil
+}
+
+func (req DownloadProgressReq) ContinueDownloadProgress() error {
+	logrus.Info("continue:" + req.FileName)
+	DownloadingMap.Lock()
+	defer DownloadingMap.Unlock()
+	if info, ok := DownloadingMap.m[req.FileName]; ok {
+		if !info.IsStop {
+			return nil
+		}
+		info.IsStop = false
+		info.IsErr = false
+		info.RestarChan <- struct{}{}
+	} else {
+		return errors.New("not found")
+	}
 	return nil
 }

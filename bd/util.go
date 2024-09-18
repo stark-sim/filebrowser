@@ -2,6 +2,7 @@ package bd
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"io"
 	"io/ioutil"
@@ -93,7 +94,7 @@ func SendHTTPRequest(url string, body io.Reader, headers map[string]string) (str
 }
 
 // for download
-func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (io.ReadCloser, int, error) {
+func Do2HTTPRequest(ctx context.Context, url string, body io.Reader, headers map[string]string) (io.ReadCloser, int, error) {
 	// timeout := 500 * time.Second
 	retryTimes := 3
 	tr := &http.Transport{
@@ -102,7 +103,7 @@ func Do2HTTPRequest(url string, body io.Reader, headers map[string]string) (io.R
 	}
 	httpClient := &http.Client{Transport: tr}
 	// httpClient.Timeout = timeout
-	req, err := http.NewRequest("POST", url, body)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
 	if err != nil {
 		return nil, 0, err
 	}

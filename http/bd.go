@@ -131,7 +131,7 @@ var bdDeleteDownloadProgress = func(w http.ResponseWriter, r *http.Request, d *d
 		return renderJSON(w, r, err)
 	}
 	downloadProgress.DeleteDownloadProgress()
-	return renderJSON(w, r, d)
+	return renderJSON(w, r, err)
 }
 
 var bdRefreshAccessToken = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
@@ -184,4 +184,43 @@ var bdGetAccessToken = func(w http.ResponseWriter, r *http.Request, d *data) (in
 		return http.StatusInternalServerError, err
 	}
 	return 0, nil
+}
+
+var bdStopDownload = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var downloadProgress bd.DownloadProgressReq
+	err := json.Unmarshal(all, &downloadProgress)
+	if err != nil {
+		logrus.Error(err)
+		return renderJSON(w, r, err)
+	}
+	downloadProgress.StopDownloadProgress()
+	return renderJSON(w, r, err)
+}
+
+var bdCancelDownload = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var downloadProgress bd.DownloadProgressReq
+	err := json.Unmarshal(all, &downloadProgress)
+	if err != nil {
+		logrus.Error(err)
+		return renderJSON(w, r, err)
+	}
+	downloadProgress.CancelDownloadProgress()
+	return renderJSON(w, r, err)
+}
+
+var bdReDownload = func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
+	all, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	var downloadProgress bd.DownloadProgressReq
+	err := json.Unmarshal(all, &downloadProgress)
+	if err != nil {
+		logrus.Error(err)
+		return renderJSON(w, r, err)
+	}
+	downloadProgress.ContinueDownloadProgress()
+	return renderJSON(w, r, err)
 }

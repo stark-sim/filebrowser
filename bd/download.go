@@ -2,6 +2,8 @@ package bd
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,11 +28,27 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 	case size > 100*MB:
 		sum := size / (100 * MB)
 		DownloadingMap.Lock()
-		DownloadingMap.m[path+outputFilename] = &Temple{
-			SizeB:      size,
-			CurrentB:   0,
-			Percentage: 0,
-			IsErr:      false,
+		var stopChan, restartChan, cancelChan chan struct{}
+		if info, ok := DownloadingMap.m[path+outputFilename]; ok {
+			info.IsStop = false
+			info.IsErr = false
+			stopChan = info.StopChan
+			restartChan = info.RestarChan
+			cancelChan = info.CancelChan
+		} else {
+			stopChan = make(chan struct{})
+			restartChan = make(chan struct{})
+			cancelChan = make(chan struct{})
+			DownloadingMap.m[path+outputFilename] = &Temple{
+				SizeB:      size,
+				CurrentB:   0,
+				Percentage: 0,
+				IsErr:      false,
+				IsStop:     false,
+				StopChan:   stopChan,
+				RestarChan: restartChan,
+				CancelChan: cancelChan,
+			}
 		}
 		DownloadingMap.Unlock()
 
@@ -43,31 +61,50 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 			return err
 		}
 		errChan := make(chan struct{})
-		isErr := false
 		// 创建一个协程池，协程数量
 		p, _ := ants.NewPool(2)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			for {
+				select {
+				case <-errChan:
+					logrus.Error("下载文件失败,暂停下载文件")
+					cancel()
+				case <-stopChan:
+					logrus.Info("暂停下载文件")
+					cancel()
+				case <-cancelChan:
+					logrus.Info("取消下载文件")
+					cancel()
+					return
+				case <-restartChan:
+					logrus.Info("继续下载文件")
+					go Download(path, accessToken, dlink, outputFilename, size)
+					return
+				}
+			}
+		}()
 		for i := 0; uint64(i) <= sum; i++ {
 			select {
-			case <-errChan:
-				logrus.Error("下载文件失败")
+			case <-ctx.Done():
+				logrus.Debug("下载被取消")
+				return nil
 			default:
 				wg.Add(1)
 				// 确保i的值在循环中不变
 				i_ := i
 				if uint64(i) == sum {
 					p.Submit(func() {
-						doRequest(uri, uint64(i_), 0, path+outputFilename, tmpPath, true, &wg, errChan)
+						doRequest(ctx, uri, uint64(i_), 0, path+outputFilename, tmpPath, true, &wg, errChan)
 					})
 				} else {
 					p.Submit(func() {
-						doRequest(uri, uint64(i_), 0, path+outputFilename, tmpPath, false, &wg, errChan)
+						doRequest(ctx, uri, uint64(i_), 0, path+outputFilename, tmpPath, false, &wg, errChan)
 					})
 				}
 			}
-			if isErr {
-				break
-			}
 		}
+
 		wg.Wait()
 		file, err := os.OpenFile(path+outputFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
@@ -90,11 +127,11 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 						wg.Add(1)
 						if uint64(i) == sum {
 							p.Submit(func() {
-								doRequest(uri, uint64(i), 0, path+outputFilename, tmpPath, true, &wg, errChan)
+								doRequest(ctx, uri, uint64(i), 0, path+outputFilename, tmpPath, true, &wg, errChan)
 							})
 						} else {
 							p.Submit(func() {
-								doRequest(uri, uint64(i), 0, path+outputFilename, tmpPath, false, &wg, errChan)
+								doRequest(ctx, uri, uint64(i), 0, path+outputFilename, tmpPath, false, &wg, errChan)
 							})
 						}
 						wg.Wait()
@@ -123,6 +160,9 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 			}()
 		}
 		err = fileWriter.Flush()
+		if err != nil {
+			return err
+		}
 		// 标记下载完成
 		DownloadingMap.Lock()
 		DownloadingMap.m[path+outputFilename] = &Temple{
@@ -133,9 +173,6 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 		}
 		DownloadingMap.Unlock()
 
-		if err != nil {
-			return err
-		}
 		go func() {
 			logrus.Info("删除临时文件夹: ", tmpPath)
 			err := os.RemoveAll(tmpPath)
@@ -144,45 +181,144 @@ func Download(path string, accessToken string, dlink string, outputFilename stri
 			}
 		}()
 	default:
-		headers := map[string]string{
-			"User-Agent": "pan.baidu.com",
-		}
-
-		var postBody io.Reader
-		body, statusCode, err := Do2HTTPRequest(uri, postBody, headers)
-		if err != nil {
-			return err
-		}
-		if statusCode != 200 && statusCode != 206 {
-			// 重试3次
-			for i := 1; i <= 3; i++ {
-				body, statusCode, err = Do2HTTPRequest(uri, postBody, headers)
-				if err == nil {
-					break
-				}
-				if statusCode != 200 && statusCode != 206 {
-					continue
-				}
-				if i == 3 {
-					return err
-				}
+		var cancelChan chan struct{}
+		var restartChan chan struct{}
+		var stopChan chan struct{}
+		DownloadingMap.Lock()
+		if info, ok := DownloadingMap.m[path+outputFilename]; ok {
+			// 重新下载
+			info.IsStop = false
+			info.IsErr = false
+			cancelChan = info.CancelChan
+			restartChan = info.RestarChan
+			stopChan = info.StopChan
+		} else {
+			// 新建下载
+			cancelChan = make(chan struct{})
+			restartChan = make(chan struct{})
+			stopChan = make(chan struct{})
+			DownloadingMap.m[path+outputFilename] = &Temple{
+				SizeB:      size,
+				CurrentB:   0,
+				Percentage: 0,
+				IsErr:      false,
+				IsStop:     false,
+				IsSmall:    true,
+				CancelChan: cancelChan,
+				RestarChan: restartChan,
+				StopChan:   stopChan,
 			}
 		}
-
-		// 下载数据输出到名“outputFilename”的文件
-		file, _ := os.OpenFile(path+outputFilename, os.O_WRONLY|os.O_CREATE, 0666)
-		defer file.Close()
-		write := bufio.NewWriter(file)
-		_, err = write.ReadFrom(body)
+		DownloadingMap.Unlock()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go func() {
+			for {
+				select {
+				case <-stopChan:
+					cancel()
+				case <-cancelChan:
+					cancel()
+				case <-restartChan:
+					go Download(path, accessToken, dlink, outputFilename, size)
+					return
+				}
+			}
+		}()
+		err := handelDownload(ctx, uri, size, outputFilename, path+outputFilename)
 		if err != nil {
-			return err
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			logrus.Error(err)
+			DownloadingMap.Lock()
+			info, ok := DownloadingMap.m[path+outputFilename]
+			if ok {
+				info.IsErr = true
+				info.IsStop = true
+			}
+			DownloadingMap.Unlock()
 		}
-		return nil
+
 	}
 	return nil
 }
 
-func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPath string, isEnd bool, wg *sync.WaitGroup, errChan chan struct{}) {
+func handelDownload(ctx context.Context, uri string, size uint64, outputFilename string, downloadPath string) error {
+	var offset int64 = 0
+	fileInfo, err := os.Stat(downloadPath)
+	if err == nil {
+		if fileInfo.Size() == int64(size) {
+			logrus.Info("文件: ", outputFilename, "已存在且完整，跳过下载此文件")
+			return nil
+		} else {
+			offset = fileInfo.Size() - 1
+		}
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if err := downloadFile(ctx, uri, downloadPath, size, offset, 0); err != nil {
+		return err
+	}
+	return nil
+}
+
+func downloadFile(ctx context.Context, uri string, saveFilePath string, size uint64, offset, scope int64) error {
+	logrus.Info("offset: ", offset, " scope: ", scope, " size: ", size)
+	headers := map[string]string{
+		"User-Agent": "pan.baidu.com",
+	}
+	if offset != 0 {
+		if scope != 0 {
+			headers["Range"] = fmt.Sprintf("bytes=%d-%d", offset, offset+scope-1)
+		} else {
+			headers["Range"] = fmt.Sprintf("bytes=%d-", offset+1)
+		}
+	}
+	body, statusCode, err := Do2HTTPRequest(ctx, uri, nil, headers)
+	if err != nil {
+		return err
+	}
+	logrus.Info("下载文件: ", saveFilePath, " 开始", "statusCode:", statusCode)
+	if statusCode != 200 && statusCode != 206 {
+		// 重试3次
+		for i := 1; i <= 3; i++ {
+			body, statusCode, err = Do2HTTPRequest(ctx, uri, nil, headers)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				continue
+			}
+			if statusCode != 200 && statusCode != 206 {
+				continue
+			}
+			if i == 3 {
+				return err
+			}
+			break
+		}
+	}
+	file, _ := os.OpenFile(saveFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	defer file.Close()
+	_, err = io.Copy(file, body)
+	if err != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			return nil
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
+func doRequest(ctx context.Context, uri string, index uint64, restart int, downloadPath string, tmpPath string, isEnd bool, wg *sync.WaitGroup, errChan chan struct{}) {
 	dp := downloadPath + "-" + strconv.FormatUint(index, 10)
 	filename := filepath.Base(downloadPath)
 	tp := tmpPath + filename + "-" + strconv.FormatUint(index, 10)
@@ -192,6 +328,18 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		if wg != nil {
 			wg.Done()
 		}
+		return
+	}
+	if restart > 10 {
+		logrus.Error("下载文件失败，重试次数过多")
+		DownloadingMap.Lock()
+		info, ok := DownloadingMap.m[downloadPath]
+		if ok {
+			info.IsErr = true
+			info.IsStop = true
+		}
+		DownloadingMap.Unlock()
+		errChan <- struct{}{}
 		return
 	}
 	time.Sleep(time.Duration(restart) * 3000 * time.Millisecond)
@@ -204,28 +352,24 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		headers["Range"] = "bytes=" + strconv.FormatUint(100*MB*index, 10) + "-" + strconv.FormatUint(100*MB*(index+1)-1, 10)
 	}
 
-	body, statusCode, err := Do2HTTPRequest(uri, nil, headers)
+	body, statusCode, err := Do2HTTPRequest(ctx, uri, nil, headers)
 	if err != nil {
-		logrus.Error(err)
-		if restart > 10 {
-			logrus.Error("下载文件失败，重试次数过多")
-			DownloadingMap.Lock()
-			_, ok := DownloadingMap.m[downloadPath]
-			if ok {
-				DownloadingMap.m[downloadPath].IsErr = true
+		switch {
+		case errors.Is(err, context.Canceled):
+			logrus.Debug("下载文件失败，下载被取消")
+			return
+		default:
+			logrus.Error(err)
+
+			logrus.Info("开始重新下载文件,下载编号: ", index, " 重载次数: ", restart)
+			if restart < 3 {
+				time.Sleep(2 * time.Duration(restart) * time.Second)
+			} else {
+				time.Sleep(2 * time.Duration(restart) * time.Second)
 			}
-			DownloadingMap.Unlock()
-			errChan <- struct{}{}
+			go doRequest(ctx, uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
 			return
 		}
-		logrus.Info("开始重新下载文件,下载编号: ", index, " 重载次数: ", restart)
-		if restart < 3 {
-			time.Sleep(2 * time.Duration(restart) * time.Second)
-		} else {
-			time.Sleep(2 * time.Duration(restart) * time.Second)
-		}
-		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
-		return
 	}
 	defer body.Close()
 
@@ -239,30 +383,35 @@ func doRequest(uri string, index uint64, restart int, downloadPath string, tmpPa
 		} else {
 			time.Sleep(2 * time.Duration(restart) * time.Second)
 		}
-		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
+		go doRequest(ctx, uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
 		return
 	}
 	// 下载数据输出到名“outputFilename”的文件
 	file, err := os.OpenFile(tp, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		logrus.Error(err)
-		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
+		go doRequest(ctx, uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
 		return
 	}
 	n, err := io.Copy(file, body)
 	if err != nil {
-		go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
-		logrus.Error(err)
-		return
+		switch {
+		case errors.Is(err, context.Canceled):
+			logrus.Debug("下载被取消")
+			return
+		default:
+			go doRequest(ctx, uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
+			logrus.Error(err)
+			return
+		}
 	}
 	if !isEnd {
 		if n != 100*MB {
-			go doRequest(uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
+			go doRequest(ctx, uri, index, restart+1, downloadPath, tmpPath, isEnd, wg, errChan)
 			logrus.Error("下载文件失败，文件大小不对")
 			return
 		}
 	}
-
 	if wg != nil {
 		wg.Done()
 	}

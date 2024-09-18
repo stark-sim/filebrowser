@@ -18,3 +18,11 @@ func DirSize(path string) (uint64, error) {
 	})
 	return size, err
 }
+
+func FileSize(path string) (uint64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(info.Size()), nil
+}
