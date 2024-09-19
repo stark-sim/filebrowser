@@ -3,11 +3,12 @@ package http
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/r3labs/sse/v2"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/r3labs/sse/v2"
 )
 
 var DirInfoURL = os.Getenv("USER_CENTER_HOST") + "/v1/cloud-files"
@@ -46,38 +47,38 @@ var cephalonDiskDownload = func(w http.ResponseWriter, r *http.Request, d *data)
 	defer myelinResponse.Body.Close()
 
 	fmt.Printf("myelin response code is %d\n", myelinResponse.StatusCode)
-	//文件不存在
-	if myelinResponse.StatusCode == 404 {
+
+	switch myelinResponse.StatusCode {
+	case 404:
 		return http.StatusNotFound, nil
-	}
-
-	//文件正在向master节点爬取,轮询什么时候爬取完成
-	if myelinResponse.StatusCode == 302 {
+	case 302:
 		return http.StatusFound, nil
-	}
+	case 200:
+		// 确认目标文件夹存在
+		fullPath := filepath.Join(d.server.Root, input.Target)
+		if err := os.MkdirAll(fullPath, os.ModePerm); err != nil {
+			return http.StatusInternalServerError, err
+		}
 
-	//确认目标文件夹存在
-	fullPath := filepath.Join(d.server.Root, input.Target)
-	if err := os.MkdirAll(fullPath, os.ModePerm); err != nil {
-		return http.StatusInternalServerError, err
-	}
+		// 创建目标文件
+		filePath := filepath.Join(fullPath, input.Filename)
+		newFile, err := os.Create(filePath)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+		defer newFile.Close()
 
-	// 创建目标文件
-	filePath := filepath.Join(fullPath, input.Filename)
-	newFile, err := os.Create(filePath)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	defer newFile.Close()
+		// 复制文件
+		_, err = io.Copy(newFile, myelinResponse.Body)
+		if err != nil {
+			fmt.Printf("io copy err")
+			return http.StatusInternalServerError, err
+		}
 
-	//复制文件
-	_, err = io.Copy(newFile, myelinResponse.Body)
-	if err != nil {
-		fmt.Printf("io copy err")
-		return http.StatusInternalServerError, err
+		return http.StatusCreated, nil
+	default:
+		return http.StatusInternalServerError, nil
 	}
-
-	return http.StatusCreated, nil
 }
 
 var cephalonDiskDownloadProgress = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
@@ -93,6 +94,8 @@ var cephalonDiskDownloadProgress = func(w http.ResponseWriter, r *http.Request, 
 
 	// 返回读取的数据
 	server := sse.New()
+	// 禁用nginx缓冲
+	server.Headers["X-Accel-Buffering"] = "no"
 	defer server.Close()
 	server.CreateStream(md5)
 	go func() {
@@ -112,7 +115,6 @@ var cephalonDiskDownloadProgress = func(w http.ResponseWriter, r *http.Request, 
 	server.ServeHTTP(w, r)
 
 	return 0, nil
-
 }
 
 var cephalonDirInfo = func(w http.ResponseWriter, r *http.Request, _ *data) (int, error) {
